@@ -1,0 +1,35 @@
+Priority,Company,Hiring Region Intent,Sectors,Notes,Source
+1,RBC,Toronto & Canada,"Banking, Financial Services","Large analytics org, multiple analyst tracks",LinkedIn/Indeed/Built In
+1,TD,Toronto & Canada,"Banking, Financial Services","Risk, retail, wealth data teams",LinkedIn/Indeed
+1,Scotiabank,Toronto & Canada,"Banking, Financial Services",Global risk & digital analytics,LinkedIn/Indeed
+1,BMO,Toronto & Canada,"Banking, Financial Services",Commercial and retail analytics,LinkedIn/Indeed
+1,CIBC,Toronto & Canada,"Banking, Financial Services",Enterprise data office & digital,LinkedIn/Indeed
+2,Manulife,Toronto & Canada,"Insurance, Investments","Actuarial data, marketing insights",LinkedIn/Indeed
+2,Sun Life,Toronto & Canada,Insurance,"Risk analytics, operations BI",LinkedIn/Indeed
+2,Intact,Toronto & Canada,Insurance,"Pricing, claims, digital",Indeed
+2,Capital One Canada,Toronto,"Fintech, Credit","Consumer analytics, credit risk",Company site
+2,Wealthsimple,"Toronto, Remote CA",Fintech,Product analytics & growth,Company site
+2,Shopify,Remote CA,"E-commerce, SaaS",Data science & analytics,Company site
+3,Loblaw Digital,Toronto,"Retail, E-commerce",Merch & loyalty analytics,LinkedIn
+3,Canadian Tire,Toronto,Retail,Supply chain & loyalty analytics,LinkedIn
+3,Rogers,Toronto,Telecom,"Network, product & media analytics",LinkedIn
+3,Bell,Toronto,Telecom,Media & network analytics,LinkedIn
+3,TELUS,Toronto & Remote CA,Telecom,Health & consumer analytics,LinkedIn
+3,Takeda,Toronto & Remote,Pharma,Data & digital roles in Toronto,Built In Toronto
+3,Pfizer,Toronto,Pharma,Supply chain & commercial analytics,Company/Jobs boards
+3,Sanofi,Toronto,Pharma,R&D and commercial analytics,Company/Jobs boards
+3,Google (Toronto),Toronto,Tech,"Analytics, product & infra",Company site
+3,Amazon (Toronto),Toronto,Tech,Ops & product analytics,Company site
+3,Microsoft (Toronto),Toronto,Tech,Customer success & product analytics,Company site
+3,Meta (Toronto),Toronto,Tech,Product analytics,Company site
+3,Uber (Toronto),Toronto,Tech,Ops & growth analytics,Company site
+2,Automattic,Remote Global,"SaaS, Publishing",Remote-first since inception,NoDesk/Company
+2,GitLab,Remote Global,DevOps,"All-remote, many analytics adjacent roles",NoDesk/Company
+2,GitHub,Remote NA,DevTools,Remote-friendly,NoDesk
+2,Zapier,Remote Global,Automation,All-remote org,NoDesk/Company
+2,Doist,Remote Global,Productivity,Remote-first,NoDesk
+2,Buffer,Remote Global,Marketing Tech,Remote-first,NoDesk
+2,Basecamp (37signals),Remote,Project Management,Remote-friendly,NoDesk
+2,Canonical,Remote Global,Open Source,Remote-first,NoDesk
+2,Toptal,Remote Global,Talent Network,"Remote network, analytics roles appear periodically",NoDesk
+2,InVision,Remote,Design,Historically remote-first,NoDesk

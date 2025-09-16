@@ -1,0 +1,31 @@
+# project_index.yaml
+date: 2025-09-09
+prompt: prompts/Cassandra_Master_Instructions_v3.1.md
+includes:
+  - includes/ats_terms_helper.md
+  - includes/metrics_redaction_examples.md
+  - includes/bullet_verbs.md
+  - includes/offset_examples.md
+  - includes/cover_letter_hooks.md
+  - includes/qa_checklist.md
+  - includes/filenames.md
+  - includes/weekly_review.md
+  - includes/achievements/cpg.md
+  - includes/achievements/retail.md
+  - includes/achievements/healthcare.md
+  - includes/achievements/logistics.md
+  - includes/achievements/fintech.md
+  - includes/achievements/saas.md
+  - includes/snippets/recruiter_reply.md
+  - includes/snippets/follow_up.md
+  - includes/snippets/informational_interview.md
+  - includes/snippets/referral_request.md
+  - includes/snippets/thank_you.md
+run_template:
+  - runs/_run_template/inputs/JD.md
+  - runs/_run_template/inputs/notes.md
+  - runs/_run_template/outputs/resume.md
+  - runs/_run_template/outputs/cover_letter.md
+  - runs/_run_template/outputs/linkedin_summary.md
+  - runs/_run_template/outputs/ats_report.md
+  - runs/_run_template/outputs/follow_up_note.md

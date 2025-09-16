@@ -1,0 +1,20 @@
+# config/settings.yaml
+language: British-English-ize
+ban_characters:
+  - "—"
+ats:
+  coverage_target_percent: 75
+  require_in_summary: true
+  require_in_experience: true
+resume:
+  word_count_min: 650
+  word_count_max: 750
+cover_letter:
+  word_count_min: 180
+  word_count_max: 220
+linkedin:
+  summary_min: 120
+  summary_max: 180
+filenames:
+  pattern_resume: "Lastname_Resume_TargetCompany_v3.1_YYYY-MM-DD.docx"
+  pattern_cover: "Lastname_Cover_TargetCompany_v3.1_YYYY-MM-DD.docx"

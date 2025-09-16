@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.tmp
+*.bak
+.vscode/
+.idea/
+runs/**/outputs/*.docx
+runs/**/outputs/*.pdf
