@@ -21,10 +21,9 @@ jobs:
 
       - name: Generate Resume
         run: |
-          for jd in $(git diff --name-only HEAD~1 HEAD | grep 'runs/.*/inputs/jd.md' || true); do
-            if [ -f "$jd" ]; then
-              python scripts/generate_resume_from_jd.py "$jd" > result.json
-            fi
+          find runs -type f -path "*/inputs/jd.md" | while read jd; do
+            echo "Processing $jd"
+            python scripts/generate_resume_from_jd.py "$jd" > result.json
           done
 
       - name: Upload resume artifacts
@@ -37,7 +36,7 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
-          git add runs/**/outputs/*.docx
+          git add runs/**/outputs/*.docx || true
           git commit -m "Add generated resumes" || echo "No changes"
           git push
 
