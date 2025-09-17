@@ -57,6 +57,11 @@ jobs:
           name: resumes
           path: runs/**/outputs/*.docx
 
+      - name: List generated resume files
+        run: |
+          echo "[INFO] Generated resumes:"
+          ls -lh runs/**/outputs/*.docx || echo "[WARN] No resumes found"
+
       - name: Commit Outputs
         run: |
           git config --local user.email "actions@github.com"
