@@ -10,7 +10,6 @@ Job Title: Market Insights Analyst
 
 Location: Greater Toronto Area (GTA Etobicoke office)
 
-
 About Us:
 
 Welcome to Lactalis Canada – where we take pride in being recognized as one of 2025 GTA's Top Employers! As well as Forbes Canada, Top Canadian Employers for 2025! Our journey revolves around enhancing the lives of Canadians through a rich variety of dairy delights, including some of Canadian’s favourite dairy brands such as like Black Diamond Cheese, Lactantia Milk, Astro Yogurt, Balderson Cheese, and Cheestrings. In fact, we’re proud to say our products grace the shelves of an incredible 94% of Canadian households!
