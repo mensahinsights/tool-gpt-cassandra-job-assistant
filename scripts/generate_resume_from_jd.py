@@ -8,7 +8,7 @@ from docx.shared import Pt
 from openai import OpenAI
 
 # Paths
-TEMPLATE_PATH = Path("templates/resume_template_cleaned_v2.docx")
+TEMPLATE_PATH = Path("templates/resume_template_cleaned_v3.docx")
 BASELINES_PATH = Path("scripts/baselines.json")
 
 ROLE_HEADINGS = [
@@ -47,7 +47,7 @@ def parse_jd(jd_path):
 
 
 def safe_openai_request(role_title, job_title, company_name):
-    """Try OpenAI once, retry once, then fallback"""
+    """Try OpenAI once, retry once, then fallback to baseline"""
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return []
@@ -82,21 +82,17 @@ def safe_openai_request(role_title, job_title, company_name):
 
 
 def normalize_bullets(openai_bullets, baseline_bullets):
-    bullets, mode = [], "baseline"
-
+    """Normalize bullets with AI overwrite if valid, otherwise baseline only"""
     if openai_bullets and MIN_BULLETS <= len(openai_bullets) <= MAX_BULLETS:
-        bullets = openai_bullets
-        mode = "openai"
+        return openai_bullets, "openai"
     elif baseline_bullets:
         bullets = baseline_bullets[:MAX_BULLETS]
         if len(bullets) < MIN_BULLETS:
             bullets = (bullets * ((MIN_BULLETS // len(bullets)) + 1))[:MIN_BULLETS]
-        mode = "baseline"
+        return bullets, "baseline"
     else:
-        bullets = ["Highlights available upon request."] * MIN_BULLETS
-        mode = "filler"
-
-    return bullets, mode
+        # No filler — baseline required
+        return [], "none"
 
 
 def clear_role_bullets(doc, role_idx):
@@ -118,7 +114,7 @@ def embed_bullets(doc, job_title, company_name, baselines):
     for role in ROLE_HEADINGS:
         role_idx = None
         for i, para in enumerate(doc.paragraphs):
-            if role in para.text:
+            if role.strip() == para.text.strip():
                 role_idx = i
                 break
         if role_idx is None:

@@ -3,7 +3,7 @@
 ## 1) Writing Style and Tone
 - Use Canadian spelling conventions (e.g., colour, honour, behaviour, centre).  
 - Use “z” endings for verbs (e.g., analyze, organize, realize).  
-- Do not use em dashes (—); use commas instead.  
+- Do not use em dashes (\u2014); use commas instead.  
 - Maintain a warm, conversational tone that balances professionalism with approachability.  
 - Avoid robotic or corporate-sounding phrasing. Content must read as though a knowledgeable colleague wrote it.  
 
