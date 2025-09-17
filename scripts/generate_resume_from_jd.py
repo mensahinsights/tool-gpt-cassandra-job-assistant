@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 from pathlib import Path
 from docx import Document
 from docx.shared import Pt
@@ -10,20 +11,17 @@ from openai import OpenAI
 TEMPLATE_PATH = Path("templates/resume_template_cleaned.docx")
 BASELINES_PATH = Path("scripts/baselines.json")
 
-# Roles expected in the template
 ROLE_HEADINGS = [
     "Independent Data Analyst | BI & Automation Consultant",
     "Senior Transformation Analyst | PepsiCo",
     "IT Analyst – R&D and Product Development | MPAC"
 ]
 
-# Bullet count rules
 MIN_BULLETS = 4
 MAX_BULLETS = 6
 
 
 def load_baselines():
-    """Load baseline bullets from baselines.json"""
     if not BASELINES_PATH.exists():
         raise FileNotFoundError(f"Baseline file not found at {BASELINES_PATH}")
     with open(BASELINES_PATH, "r", encoding="utf-8") as f:
@@ -31,7 +29,6 @@ def load_baselines():
 
 
 def parse_jd(jd_path):
-    """Extract Company, Job Title, Closing Date, and URL from jd.md"""
     company, job_title = None, None
     closing_date, jd_url = "TBD Closing Date", ""
     with open(jd_path, "r", encoding="utf-8") as f:
@@ -41,25 +38,25 @@ def parse_jd(jd_path):
             elif line.lower().startswith("job title:"):
                 job_title = line.split(":", 1)[1].strip()
             elif line.lower().startswith("closing date:"):
-                value = line.split(":", 1)[1].strip()
-                if value:
-                    closing_date = value
+                val = line.split(":", 1)[1].strip()
+                if val:
+                    closing_date = val
             elif line.lower().startswith("url:"):
                 jd_url = line.split(":", 1)[1].strip()
     return company, job_title, closing_date, jd_url
 
 
-def generate_bullets_for_role(role_title, job_title, company_name, baselines):
-    """
-    Generate tailored bullets using OpenAI if available.
-    Always enforce 4–6 bullets, padded with baselines if needed.
-    """
-    bullets, mode = [], "baseline"
+def safe_openai_request(role_title, job_title, company_name):
+    """Try OpenAI once, retry once, then fallback"""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return []
 
-    # Try OpenAI
-    if os.environ.get("OPENAI_API_KEY"):
+    client = OpenAI(api_key=api_key)
+
+    for attempt in range(2):
         try:
-            client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            print(f"[DEBUG] OpenAI request attempt {attempt+1} for {role_title}")
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -74,22 +71,28 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
                 timeout=30
             )
             content = resp.choices[0].message.content
-            candidate = [b.strip("-• ") for b in content.split("\n") if b.strip()]
-            if candidate:
-                bullets = candidate
-                mode = "openai"
+            bullets = [b.strip("-• ") for b in content.split("\n") if b.strip()]
+            if bullets:
+                return bullets
         except Exception as e:
-            print(f"[WARN] OpenAI request failed for {role_title}: {e}")
+            print(f"[WARN] OpenAI error for {role_title}: {e}")
+            time.sleep(2)
 
-    baseline_bullets = baselines.get(role_title, [])
+    return []
 
-    # Normalize bullets
+
+def normalize_bullets(openai_bullets, baseline_bullets, role_title):
+    bullets, mode = [], "baseline"
+
+    if openai_bullets:
+        bullets = openai_bullets
+        mode = "openai"
+
     if not bullets and baseline_bullets:
         bullets = baseline_bullets.copy()
         mode = "baseline"
 
     if 0 < len(bullets) < MIN_BULLETS and baseline_bullets:
-        # Pad with baselines until minimum
         while len(bullets) < MIN_BULLETS:
             bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
@@ -97,13 +100,13 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
         bullets = bullets[:MAX_BULLETS]
 
     if not bullets:
-        bullets = ["Key achievements available upon request."]  # fallback of last resort
+        bullets = ["Highlights available upon request."]
+        mode = "fallback"
 
     return bullets, mode
 
 
 def clear_role_bullets(doc, role_idx):
-    """Remove any existing bullets under a role heading in the template."""
     to_remove = []
     for j in range(role_idx + 1, len(doc.paragraphs)):
         para = doc.paragraphs[j]
@@ -117,7 +120,6 @@ def clear_role_bullets(doc, role_idx):
 
 
 def embed_bullets(doc, job_title, company_name, baselines):
-    """Replace role bullets with tailored ones, ensuring single spacing."""
     results = {}
     for role in ROLE_HEADINGS:
         role_idx = None
@@ -130,9 +132,10 @@ def embed_bullets(doc, job_title, company_name, baselines):
             continue
 
         clear_role_bullets(doc, role_idx)
-
         date_para = doc.paragraphs[role_idx + 1]
-        bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
+
+        openai_bullets = safe_openai_request(role, job_title, company_name)
+        bullets, mode = normalize_bullets(openai_bullets, baselines.get(role, []), role)
 
         results[role] = {"mode": mode, "count": len(bullets)}
 
