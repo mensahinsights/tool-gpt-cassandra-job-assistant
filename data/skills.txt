@@ -1,10 +1,44 @@
 SQL
 Power BI
 Python
-SAS
+Pandas
+NumPy
+Tableau
+Excel
+Pivot Tables
+VLOOKUP
+VBA
+Power Query
 UiPath
-Data Analytics
-Business Intelligence
+UiPath RPA
 RPA
-Process Automation
+Automation
+Data Automation
 Data Visualization
+Business Intelligence
+Data Analytics
+Forecasting
+Financial Forecasting
+Predictive Modelling
+Root Cause Analysis
+KPI Automation
+Process Automation
+Stakeholder Engagement
+Agile Delivery
+Reporting Automation
+Data Pipelines
+ETL
+Data Quality
+Data Validation
+SAS
+SAS Programming
+Statistical Modelling
+Regression Analysis
+Machine Learning
+Executive Dashboards
+Compliance Reporting
+Audit Reporting
+BI Dashboards
+Data Storytelling
+Data Interpretation
+Data Driven Insights
