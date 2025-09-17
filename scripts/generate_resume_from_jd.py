@@ -1,179 +1,182 @@
 import os
 import sys
 import json
+import yaml
 import re
 from pathlib import Path
 from openai import OpenAI
 
-# Paths
-BASELINES_PATH = Path("scripts/baselines.json")
+# --------------------------
+# Config
+# --------------------------
+MODEL = "gpt-4o-mini"
+BASELINES_PATH = "baselines.json"
 
-# Roles expected in resume
-ROLE_HEADINGS = [
-    "Independent Data Analyst | BI & Automation Consultant",
-    "Senior Transformation Analyst | PepsiCo",
-    "IT Analyst - R&D and Product Development | MPAC"
-]
-
-MIN_BULLETS = 4
-MAX_BULLETS = 6
-
+# --------------------------
+# Utilities
+# --------------------------
 def normalize_text(text: str) -> str:
-    text = text.replace("–", "-").replace("—", "-")
-    return re.sub(r"\s+", " ", text).strip()
+    """Ensure ASCII-only: replace dashes, normalize quotes, trim whitespace."""
+    text = text.replace("—", "-").replace("–", "-")
+    text = text.replace("“", "\"").replace("”", "\"").replace("’", "'")
+    return text.strip()
 
-def normalize_role_name(name: str) -> str:
-    return normalize_text(name).lower()
-
-def load_baselines():
-    if not BASELINES_PATH.exists():
-        raise FileNotFoundError(f"Baseline file not found at {BASELINES_PATH}")
+def load_baselines() -> dict:
     with open(BASELINES_PATH, "r", encoding="utf-8") as f:
-        baselines = json.load(f)
-    return {normalize_role_name(k): v for k, v in baselines.items()}
+        return json.load(f)
 
-def parse_jd(jd_path):
-    company, job_title, closing_date, jd_url = None, None, "TBD Closing Date", ""
+def parse_jd_header(jd_path: Path) -> dict:
+    """Extract Company, Job Title, Closing Date, URL from JD header."""
+    header = {"company": "Unknown", "job_title": "Unknown", "closing_date": "TBD", "jd_url": ""}
     with open(jd_path, "r", encoding="utf-8") as f:
-        for line in f:
-            low = line.lower()
-            if low.startswith("company:"):
-                company = normalize_text(line.split(":", 1)[1].strip())
-            elif low.startswith("job title:"):
-                job_title = normalize_text(line.split(":", 1)[1].strip())
-            elif low.startswith("closing date:"):
-                val = line.split(":", 1)[1].strip()
-                if val:
-                    closing_date = normalize_text(val)
-            elif low.startswith("url:"):
-                jd_url = line.split(":", 1)[1].strip()
-    return company, job_title, closing_date, jd_url
+        lines = f.readlines()
 
-def safe_openai_request(role_title, job_title, company_name):
+    for line in lines:
+        if line.startswith("Company:"):
+            header["company"] = normalize_text(line.split(":", 1)[1].strip())
+        elif line.startswith("Job Title:"):
+            header["job_title"] = normalize_text(line.split(":", 1)[1].strip())
+        elif line.startswith("Closing Date:"):
+            header["closing_date"] = normalize_text(line.split(":", 1)[1].strip()) or "TBD"
+        elif line.startswith("URL:"):
+            header["jd_url"] = normalize_text(line.split(":", 1)[1].strip())
+        if line.strip() == "":
+            break  # stop after header
+    return header
+
+def generate_ai_bullets(role: str, job_title: str, company: str, baseline: list) -> list:
+    """Ask OpenAI to tailor bullets for a role; fallback gracefully."""
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return []
+
     try:
         client = OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+        prompt = (
+            f"Tailor 4–6 resume bullets for the role '{role}' so they align with the job title '{job_title}' "
+            f"at company '{company}'. Use action verbs, quantify impact where possible, avoid placeholders."
+        )
+
+        response = client.chat.completions.create(
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are an expert resume writer."},
-                {"role": "user", "content": (
-                    f"Given the past role '{role_title}' and the target role '{job_title}' at {company_name}, "
-                    "generate 4–6 resume bullet points showing alignment. "
-                    "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
-                    "Return only bullet points."
-                )}
+                {"role": "user", "content": prompt},
             ],
-            timeout=30
+            max_tokens=400,
+            temperature=0.7,
         )
-        content = resp.choices[0].message.content
-        bullets = [normalize_text(b.strip("-• ")) for b in content.split("\n") if b.strip()]
+
+        raw = response.choices[0].message.content.strip()
+        bullets = [normalize_text(line) for line in raw.split("\n") if line.strip()]
+        # Remove leading symbols like "-", "*", "•"
+        bullets = [re.sub(r"^[\-\*\•]\s*", "", b) for b in bullets]
         return bullets
     except Exception as e:
-        print(f"[WARN] OpenAI error for {role_title}: {e}")
+        print(f"[DEBUG] OpenAI request failed for {role}: {e}")
         return []
 
-def normalize_bullets(openai_bullets, baseline_bullets):
-    if openai_bullets and MIN_BULLETS <= len(openai_bullets) <= MAX_BULLETS:
-        return openai_bullets, "openai"
-    elif baseline_bullets:
-        bullets = baseline_bullets[:MAX_BULLETS]
-        if len(bullets) < MIN_BULLETS:
-            bullets = (bullets * ((MIN_BULLETS // len(bullets)) + 1))[:MIN_BULLETS]
-        return bullets, "baseline"
-    else:
-        return ["(No baseline bullets available)"], "none"
+def enforce_bullet_count(bullets: list, baseline: list) -> (list, str):
+    """Guarantee 4–6 bullets. Use baseline or defaults if AI fails."""
+    defaults = [
+        "Analyzed data to support decision-making.",
+        "Collaborated with teams to improve processes.",
+        "Developed reports to monitor key metrics.",
+        "Streamlined workflows to increase efficiency."
+    ]
 
-def build_resume(company_name, job_title, closing_date, jd_url, baselines):
-    lines = []
-    lines.append(f"# Gamal Mensah\n")
-    lines.append("**Data Analyst | Strategic Insight & Automation | SQL • Python • Power BI**  ")
-    lines.append("Toronto, ON | gmensah.analytics@gmail.com | Phone: Provided on request | LinkedIn | Portfolio\n")
-    lines.append("---\n")
+    mode = "AI"
 
-    lines.append("## Professional Summary\n")
-    lines.append("I turn operational data into insights that drive action, not just observation. "
-                 "With over 10 years of experience in data analysis, I specialize in uncovering trends, "
-                 "improving processes, and enabling strategy through automation and clear storytelling.\n")
-    lines.append("---\n")
+    if not bullets:
+        bullets = baseline if baseline else defaults
+        mode = "Baseline" if baseline else "Default"
 
-    lines.append("## Professional Experience\n")
-    results = {}
+    if len(bullets) < 4:
+        bullets += (baseline if baseline else defaults)
+        bullets = bullets[:4]
+        mode += "+Padded"
+    elif len(bullets) > 6:
+        bullets = bullets[:6]
 
-    for role in ROLE_HEADINGS:
-        role_clean = normalize_role_name(role)
-        baseline_bullets = baselines.get(role_clean, [])
+    return bullets, mode
 
-        openai_bullets = safe_openai_request(role, job_title, company_name)
-        bullets, mode = normalize_bullets(openai_bullets, baseline_bullets)
-        results[role] = {"mode": mode, "count": len(bullets)}
+def build_resume(jd_path: Path, baselines: dict):
+    jd_meta = parse_jd_header(jd_path)
+    company, job_title = jd_meta["company"], jd_meta["job_title"]
 
-        if "Independent Data Analyst" in role:
-            date_line = "**Jan 2025 - Present | Greater Toronto Area, Canada**"
-        elif "PepsiCo" in role:
-            date_line = "**Mar 2020 - Jan 2025 | Mississauga, ON**"
-        elif "MPAC" in role:
-            date_line = "**Aug 2003 - Mar 2020 | Pickering, ON**"
-        else:
-            date_line = ""
+    out_dir = jd_path.parent.parent / "outputs"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-        lines.append(f"### {role}\n")
-        if date_line:
-            lines.append(f"{date_line}\n")
-        for b in bullets:
-            lines.append(f"- {b}\n")
-        lines.append("\n")
+    resume_filename = f"Gamal_Mensah_Resume_{company.replace(' ', '')}.md"
+    resume_path = out_dir / resume_filename
+    result_path = out_dir / "result.json"
 
-    lines.append("---\n")
-    lines.append("## Education & Certifications\n")
-    lines.append("- BrainStation - Data Science Certification (2025)\n")
-    lines.append("- Dalhousie University - BA in Economics\n")
-    lines.append("- ITI Halifax - Applied Information Technology Diploma\n")
-    lines.append("- Toronto Metropolitan University - Business Administration Certificate\n")
-    lines.append("- UiPath RPA Developer Foundation\n")
-    lines.append("- SAS Certified Base Programmer\n")
-    lines.append("- University of Waterloo - Project Management\n")
-    lines.append("- FranklinCovey - The 5 Choices (Time Management)\n")
+    sections = []
 
-    return "\n".join(lines), results
+    # Contact
+    if "Contact" in baselines:
+        sections.append(f"# Gamal Mensah Resume\n\n{baselines['Contact']}")
 
-def main(jd_path):
-    baselines = load_baselines()
-    company_name, job_title, closing_date, jd_url = parse_jd(jd_path)
-    if not company_name:
-        raise ValueError(f"No company found in {jd_path}")
+    # Summary
+    if "Summary" in baselines:
+        summary_text = " ".join([normalize_text(s) for s in baselines["Summary"]])
+        sections.append(f"## Summary\n{summary_text}")
 
-    company_clean = re.sub(r"[^A-Za-z0-9]", "", company_name)
+    # Work Experience
+    work_lines = ["## Work Experience"]
+    roles_processed = {}
 
-    outputs_dir = Path(jd_path).parent.parent / "outputs"
-    outputs_dir.mkdir(parents=True, exist_ok=True)
+    for role, baseline_bullets in baselines.items():
+        if role in ["Contact", "Summary", "Education", "Skills"]:
+            continue
 
-    out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.md"
-    resume_md, role_data = build_resume(company_name, job_title, closing_date, jd_url, baselines)
+        ai_bullets = generate_ai_bullets(role, job_title, company, baseline_bullets)
+        bullets, mode = enforce_bullet_count(ai_bullets, baseline_bullets)
 
-    with open(out_file, "w", encoding="utf-8") as f:
-        f.write(resume_md)
+        work_lines.append(f"### {role}")
+        work_lines.append(f"- {bullets[0]}")
+        for b in bullets[1:]:
+            work_lines.append(f"- {b}")
 
-    result_file = outputs_dir / "result.json"
-    ats_data = {
-        "company": company_name,
+        print(f"[DEBUG] Role: {role} → {mode} ({len(bullets)} bullets)")
+        roles_processed[role] = {"mode": mode, "bullet_count": len(bullets)}
+
+    sections.append("\n".join(work_lines))
+
+    # Education
+    if "Education" in baselines:
+        edu_lines = ["## Education"] + [f"- {normalize_text(e)}" for e in baselines["Education"]]
+        sections.append("\n".join(edu_lines))
+
+    # Skills
+    if "Skills" in baselines:
+        skill_lines = ["## Skills"] + [f"- {normalize_text(s)}" for s in baselines["Skills"]]
+        sections.append("\n".join(skill_lines))
+
+    # Write resume.md
+    with open(resume_path, "w", encoding="utf-8") as f:
+        f.write("\n\n".join(sections))
+
+    # Write result.json
+    result = {
+        "company": company,
         "job_title": job_title,
-        "closing_date": closing_date,
-        "jd_path": str(jd_path),
-        "jd_url": jd_url,
-        "resume_file": os.path.basename(out_file),
-        "roles": role_data
+        "closing_date": jd_meta["closing_date"],
+        "jd_url": jd_meta["jd_url"],
+        "roles_processed": roles_processed,
     }
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(ats_data, f, indent=2)
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
 
-    print(f"[INFO] Resume saved to {out_file}")
-    print(f"[INFO] ATS data saved to {result_file}")
+    print(f"[DEBUG] Workflow completed successfully, resume saved to {resume_path}")
+    return resume_path, result_path
+
+def main(jd_path: str):
+    baselines = load_baselines()
+    build_resume(Path(jd_path), baselines)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python generate_resume_from_jd.py <jd_path>")
+        print("Usage: python generate_resume_from_jd.py <jd.md>")
         sys.exit(1)
     main(sys.argv[1])

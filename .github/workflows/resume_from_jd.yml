@@ -1,4 +1,4 @@
-name: Generate Resume from JD (Markdown)
+name: Generate Resume from JD
 
 on:
   push:
@@ -20,13 +20,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install openai pyyaml
-
-      - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        run: pip install -r requirements.txt
 
       - name: Generate Resume(s)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "[DEBUG] Scanning for jd.md files..."
           find runs -type f -path "*/inputs/jd.md" | while read jd; do
@@ -34,22 +32,16 @@ jobs:
             python scripts/generate_resume_from_jd.py "$jd"
           done
 
-      - name: Debug outputs directory
-        run: |
-          echo "[DEBUG] Listing outputs folder contents:"
-          ls -R runs || true
-
       - name: Upload resume artifacts
         uses: actions/upload-artifact@v4
         with:
           name: resumes
-          path: runs/**/outputs/*.md
+          path: runs/**/outputs/*
 
-      - name: (Optional) Convert Markdown to DOCX/PDF with Pandoc
+      - name: Commit Outputs
         run: |
-          sudo apt-get update && sudo apt-get install -y pandoc texlive-xetex
-          for f in runs/**/outputs/*.md; do
-            [ -f "$f" ] || continue
-            pandoc "$f" -o "${f%.md}.docx"
-            pandoc "$f" -o "${f%.md}.pdf"
-          done
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions"
+          git add runs/**/outputs/* || true
+          git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
+          git push || echo "[DEBUG] Nothing new to push"

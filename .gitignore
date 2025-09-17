@@ -1,6 +1,4 @@
-.DS_Store
-*.log
-*.tmp
-*.bak
-.vscode/
-.idea/
+__pycache__/
+.venv/
+*.pyc
+runs/**/outputs/*.log
