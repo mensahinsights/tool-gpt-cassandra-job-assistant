@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from docx import Document
 from docx.oxml import OxmlElement
+from docx.shared import Pt
 from openai import OpenAI
 
 # Paths
@@ -51,8 +52,7 @@ def parse_jd(jd_path):
 def generate_bullets_for_role(role_title, job_title, company_name, baselines):
     """
     Generate tailored bullets for a given role using OpenAI if available.
-    If too few, pad with baseline bullets.
-    Always enforce 4–6 bullets.
+    Always enforce 4–6 bullets, padded with baselines as needed.
     """
     bullets = []
     mode = "baseline"
@@ -83,13 +83,18 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
 
     baseline_bullets = baselines.get(role_title, [])
 
-    # Pad with baseline bullets if fewer than MIN
+    # If OpenAI gave nothing → use full baseline list
+    if not bullets and baseline_bullets:
+        bullets = baseline_bullets.copy()
+        mode = "baseline"
+
+    # Pad with baseline bullets until minimum reached
     while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
         bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
-    # If still empty → just use baselines
+    # If still empty → insert placeholder
     if not bullets:
-        bullets = baseline_bullets or [f"Key achievements from {role_title}."]
+        bullets = [f"Key achievements from {role_title}."]
 
     # Cap at max
     if len(bullets) > MAX_BULLETS_PER_ROLE:
@@ -119,6 +124,8 @@ def insert_bullet_after(para, text):
     new_p = OxmlElement("w:p")
     para._element.addnext(new_p)
     new_para = para._parent.add_paragraph(text, style="List Bullet")
+    new_para.paragraph_format.space_after = Pt(0)
+    new_para.paragraph_format.space_before = Pt(0)
     new_p.addnext(new_para._element)
     return new_para
 
@@ -127,7 +134,6 @@ def embed_bullets(doc, job_title, company_name, baselines):
     """
     Replace role bullets with tailored ones, ensuring bullets
     are placed directly after the date/location line.
-    Returns dict with metadata for debugging.
     """
     results = {}
 
