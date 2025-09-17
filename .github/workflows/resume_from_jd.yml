@@ -60,3 +60,11 @@ jobs:
         run: |
           echo "[DEBUG] Updating Google Sheet with result.json..."
           python scripts/update_sheet.py result.json
+
+      - name: Debug env vars
+        run: |
+          echo "GOOGLE_SHEETS_CREDENTIALS length: ${#GOOGLE_SHEETS_CREDENTIALS}"
+          echo "SHEET_ID: $SHEET_ID"
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
