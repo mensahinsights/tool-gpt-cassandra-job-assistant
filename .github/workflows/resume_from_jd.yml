@@ -41,9 +41,10 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
+          # git add won't fail if no files match
           git add runs/**/outputs/*.docx || true
           git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
-          git push
+          git push || echo "[DEBUG] Nothing new to push"
 
       - name: Update Google Sheet
         env:
