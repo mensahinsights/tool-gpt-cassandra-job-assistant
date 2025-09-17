@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 from docx import Document
+from docx.oxml import OxmlElement
 from openai import OpenAI
 
 # Paths
@@ -58,7 +59,7 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
 
     if os.environ.get("OPENAI_API_KEY"):
         try:
-            client = OpenAI()
+            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -113,6 +114,15 @@ def clear_role_bullets(doc, role_idx):
         p._element.getparent().remove(p._element)
 
 
+def insert_bullet_after(para, text):
+    """Insert a bullet paragraph immediately after a given paragraph without gaps."""
+    new_p = OxmlElement("w:p")
+    para._element.addnext(new_p)
+    new_para = para._parent.add_paragraph(text, style="List Bullet")
+    new_p.addnext(new_para._element)
+    return new_para
+
+
 def embed_bullets(doc, job_title, company_name, baselines):
     """
     Replace role bullets with tailored ones, ensuring bullets
@@ -137,7 +147,7 @@ def embed_bullets(doc, job_title, company_name, baselines):
 
         # Date/location line is always immediately after role heading
         date_idx = role_idx + 1
-        insert_idx = date_idx + 1
+        para = doc.paragraphs[date_idx]
 
         # Generate tailored bullets (with fallback padding)
         bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
@@ -145,13 +155,12 @@ def embed_bullets(doc, job_title, company_name, baselines):
         results[role] = {
             "mode": mode,
             "bullets": bullets,
-            "insert_index": insert_idx
+            "insert_index": date_idx
         }
 
-        # Insert bullets immediately after date/location (no gaps)
-        para = doc.paragraphs[date_idx]
+        # Insert bullets immediately after date/location (no blank gaps)
         for b in bullets:
-            para = para.insert_paragraph_after(b, style="List Bullet")
+            para = insert_bullet_after(para, b)
 
         print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) after line {date_idx}")
 
