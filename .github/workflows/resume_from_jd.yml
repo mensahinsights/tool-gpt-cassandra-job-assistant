@@ -34,6 +34,9 @@ jobs:
             python scripts/generate_resume_from_jd.py "$jd"
           done
 
+      - name: Run banned character check (outputs only)
+        run: python scripts/check_banned_chars.py runs/**/outputs
+
       - name: Debug outputs directory
         run: |
           echo "[DEBUG] Listing outputs folder contents:"

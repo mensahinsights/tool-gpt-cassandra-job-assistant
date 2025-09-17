@@ -1,73 +1,49 @@
 import os
 import json
-import yaml
-from pathlib import Path
-from docx import Document
+import sys
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
 
-# Assume you already have a function that parses jd.md
-def parse_jd(jd_path):
-    company = None
-    job_title = None
-    with open(jd_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.lower().startswith("company:"):
-                company = line.split(":", 1)[1].strip()
-            if line.lower().startswith("job title:"):
-                job_title = line.split(":", 1)[1].strip()
-    return company, job_title
+def update_google_sheet(result_file, sheet_id):
+    with open(result_file, "r", encoding="utf-8") as f:
+        result = json.load(f)
 
-# Stub: replace with your actual resume generator logic
-def generate_resume(company_name, job_title):
-    doc = Document()
-    doc.add_heading("Gamal Mensah – Resume", 0)
-    doc.add_paragraph(f"Target Company: {company_name}")
-    doc.add_paragraph(f"Target Role: {job_title}")
-    doc.add_paragraph("Professional summary and experience go here...")
-    # >>> DO NOT include ATS score in resume content <<<
-    return doc
+    company = result.get("company", "")
+    job_title = result.get("job_title", "")
+    ats_score = result.get("ats_score", "")
+    resume_file = os.path.basename(result.get("resume_file", ""))
 
-def main(jd_path):
-    company_name, job_title = parse_jd(jd_path)
-    if not company_name:
-        raise ValueError(f"No company found in {jd_path}")
+    creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
+    if not creds_json:
+        raise ValueError("Missing GOOGLE_SHEETS_CREDENTIALS in env")
 
-    # Clean company name for filename (remove spaces/symbols)
-    company_clean = (
-        company_name.replace(" ", "")
-        .replace("&", "")
-        .replace(",", "")
-        .replace(".", "")
+    creds = Credentials.from_service_account_info(
+        json.loads(creds_json),
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
 
-    # Create outputs folder if missing
-    outputs_dir = Path(jd_path).parent.parent / "outputs"
-    outputs_dir.mkdir(parents=True, exist_ok=True)
+    service = build("sheets", "v4", credentials=creds)
 
-    # Save resume as Gamal_Mensah_Resume_<Company>.docx
-    out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.docx"
-    resume = generate_resume(company_name, job_title)
-    resume.save(out_file)
+    values = [[company, job_title, ats_score, resume_file]]
+    body = {"values": values}
 
-    # Example ATS scoring (optional – just stored, not written into docx)
-    ats_score = 85  # Replace with real scoring function if you have one
-    ats_data = {
-        "company": company_name,
-        "job_title": job_title,
-        "ats_score": ats_score,
-        "resume_file": str(out_file)
-    }
+    service.spreadsheets().values().append(
+        spreadsheetId=sheet_id,
+        range="Sheet1!A:D",
+        valueInputOption="RAW",
+        body=body
+    ).execute()
 
-    # Save result.json for Sheets update step
-    result_file = outputs_dir / "result.json"
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(ats_data, f, indent=2)
-
-    print(f"[INFO] Resume saved to {out_file}")
-    print(f"[INFO] ATS data saved to {result_file}")
+    print(f"[INFO] Google Sheet updated: {company}, {job_title}, {ats_score}, {resume_file}")
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) < 2:
-        print("Usage: python generate_resume_from_jd.py <jd_path>")
+        print("Usage: python update_sheet.py <result.json>")
         sys.exit(1)
-    main(sys.argv[1])
+
+    result_file = sys.argv[1]
+    sheet_id = os.environ.get("SHEET_ID")
+    if not sheet_id:
+        raise ValueError("Missing SHEET_ID in env")
+
+    update_google_sheet(result_file, sheet_id)
