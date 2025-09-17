@@ -13,16 +13,21 @@ TEMPLATE_PATH = Path("templates/resume_template.docx")
 
 
 def parse_jd(jd_path):
-    """Extract company and job title from jd.md"""
+    """Extract company, job title, and closing date from jd.md"""
     company = None
     job_title = None
+    closing_date = "TBD Closing Date"
     with open(jd_path, "r", encoding="utf-8") as f:
         for line in f:
             if line.lower().startswith("company:"):
                 company = line.split(":", 1)[1].strip()
-            if line.lower().startswith("job title:"):
+            elif line.lower().startswith("job title:"):
                 job_title = line.split(":", 1)[1].strip()
-    return company, job_title
+            elif line.lower().startswith("closing date:"):
+                value = line.split(":", 1)[1].strip()
+                if value:
+                    closing_date = value
+    return company, job_title, closing_date
 
 
 def generate_bullet_points(job_title, company_name):
@@ -68,10 +73,8 @@ def embed_bullets_in_experience(doc, bullets):
         if target_heading in para.text:
             found = True
         elif found and para.style.name.startswith("List Bullet"):
-            # Continue through existing bullets
             continue
         elif found and para.text.strip() == "":
-            # Blank line after bullets → insert tailored bullets here
             for bullet in bullets:
                 doc.add_paragraph(bullet, style="List Bullet")
             break
@@ -89,15 +92,13 @@ def build_resume(company_name, job_title):
         raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
 
     doc = Document(TEMPLATE_PATH)
-
     bullets, mode = generate_bullet_points(job_title, company_name)
     embed_bullets_in_experience(doc, bullets)
-
     return doc, mode, bullets
 
 
 def main(jd_path):
-    company_name, job_title = parse_jd(jd_path)
+    company_name, job_title, closing_date = parse_jd(jd_path)
     if not company_name:
         raise ValueError(f"No company found in {jd_path}")
 
@@ -119,6 +120,8 @@ def main(jd_path):
     ats_data = {
         "company": company_name,
         "job_title": job_title,
+        "closing_date": closing_date,
+        "jd_path": str(jd_path),
         "ats_score": ats_score,
         "resume_file": os.path.basename(str(out_file)),
         "bullet_mode": mode,

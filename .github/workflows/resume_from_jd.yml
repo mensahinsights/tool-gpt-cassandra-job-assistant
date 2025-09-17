@@ -79,14 +79,8 @@ jobs:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
-          echo "[DEBUG] Looking for result.json..."
-          RESULT_FILE=$(find runs -type f -name "result.json" | sort | tail -n 1)
-          if [ -z "$RESULT_FILE" ]; then
-            echo "[ERROR] No result.json found!"
-            exit 1
-          fi
-          echo "[DEBUG] Using result.json at: $RESULT_FILE"
-          python scripts/update_sheet.py "$RESULT_FILE"
+          echo "[DEBUG] Looking for result.json files..."
+          python scripts/update_sheet.py runs
 
       - name: Debug env vars
         run: |
