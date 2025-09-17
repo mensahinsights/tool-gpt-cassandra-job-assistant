@@ -51,7 +51,7 @@ def parse_jd(jd_path):
 
 def generate_bullets_for_role(role_title, job_title, company_name, baselines):
     """
-    Generate tailored bullets for a given role using OpenAI if available.
+    Generate tailored bullets using OpenAI if available.
     Always enforce 4–6 bullets, padded with baselines as needed.
     """
     bullets = []
@@ -88,11 +88,11 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
         bullets = baseline_bullets.copy()
         mode = "baseline"
 
-    # Pad with baseline bullets until minimum reached
+    # Pad until minimum
     while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
         bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
-    # If still empty → insert placeholder
+    # If still empty → placeholder
     if not bullets:
         bullets = [f"Key achievements from {role_title}."]
 
@@ -110,11 +110,9 @@ def clear_role_bullets(doc, role_idx):
         para = doc.paragraphs[j]
         if para.style and para.style.name.startswith("List Bullet"):
             to_remove.append(para)
-        # Stop clearing when we hit the next role heading or Education
         if any(r in para.text for r in ROLE_HEADINGS if r != doc.paragraphs[role_idx].text) \
            or "Education & Certifications" in para.text:
             break
-
     for p in to_remove:
         p._element.getparent().remove(p._element)
 
@@ -131,50 +129,36 @@ def insert_bullet_after(para, text):
 
 
 def embed_bullets(doc, job_title, company_name, baselines):
-    """
-    Replace role bullets with tailored ones, ensuring bullets
-    are placed directly after the date/location line.
-    """
+    """Replace role bullets with tailored ones, ensuring bullets are single-spaced."""
     results = {}
-
     for role in ROLE_HEADINGS:
         role_idx = None
         for i, para in enumerate(doc.paragraphs):
             if role in para.text:
                 role_idx = i
                 break
-
         if role_idx is None:
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Clear any bullets under this role
         clear_role_bullets(doc, role_idx)
 
-        # Date/location line is always immediately after role heading
         date_idx = role_idx + 1
         para = doc.paragraphs[date_idx]
 
-        # Generate tailored bullets (with fallback padding)
         bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
 
-        results[role] = {
-            "mode": mode,
-            "bullets": bullets,
-            "insert_index": date_idx
-        }
+        results[role] = {"mode": mode, "bullets": bullets, "insert_index": date_idx}
 
-        # Insert bullets immediately after date/location (no blank gaps)
         for b in bullets:
             para = insert_bullet_after(para, b)
 
-        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) after line {date_idx}")
+        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode})")
 
     return results
 
 
 def build_resume(company_name, job_title, baselines):
-    """Load template and insert tailored bullets for each role"""
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
     doc = Document(TEMPLATE_PATH)
@@ -210,7 +194,7 @@ def main(jd_path):
         "jd_url": jd_url,
         "ats_score": 85,
         "resume_file": os.path.basename(str(out_file)),
-        "roles": role_data
+        "roles": role_data,
     }
 
     result_file = outputs_dir / "result.json"
