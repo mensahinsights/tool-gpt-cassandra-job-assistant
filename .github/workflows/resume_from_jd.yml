@@ -23,6 +23,9 @@ jobs:
         run: |
           pip install python-docx google-auth google-auth-httplib2 google-api-python-client pyyaml
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+
       - name: Generate Resume(s)
         run: |
           echo "[DEBUG] Scanning for jd.md files..."
