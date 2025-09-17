@@ -1,6 +1,8 @@
 {
   "company": "Landmark Group",
   "job_title": "Product Analyst",
+  "closing_date": "2025-09-29",
+  "jd_path": "runs/2025-09-17_landmark_group_product_analyst/inputs/jd.md",
   "ats_score": 85,
   "resume_file": "Gamal_Mensah_Resume_LandmarkGroup.docx",
   "bullet_mode": "fallback",

@@ -1,6 +1,8 @@
 {
   "company": "which is it",
   "job_title": "Data Analyst",
+  "closing_date": "2025-09-29",
+  "jd_path": "runs/2025-09-17_which_is_it/inputs/jd.md",
   "ats_score": 85,
   "resume_file": "Gamal_Mensah_Resume_whichisit.docx",
   "bullet_mode": "fallback",
