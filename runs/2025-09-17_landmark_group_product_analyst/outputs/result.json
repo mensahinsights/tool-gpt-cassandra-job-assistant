@@ -3,7 +3,7 @@
   "job_title": "Product Analyst",
   "closing_date": "2025-09-29",
   "jd_path": "runs/2025-09-17_landmark_group_product_analyst/inputs/jd.md",
-  "jd_url": "",
+  "jd_url": "https://www.linkedin.com/jobs/view/4298682831/",
   "ats_score": 85,
   "resume_file": "Gamal_Mensah_Resume_LandmarkGroup.docx",
   "roles": {
@@ -11,13 +11,15 @@
       "mode": "fallback",
       "bullets": [
         "Highlighted achievements from Independent Data Analyst | BI & Automation Consultant."
-      ]
+      ],
+      "insert_index": 8
     },
     "Senior Transformation Analyst | PepsiCo": {
       "mode": "fallback",
       "bullets": [
         "Highlighted achievements from Senior Transformation Analyst | PepsiCo."
-      ]
+      ],
+      "insert_index": 14
     }
   }
 }

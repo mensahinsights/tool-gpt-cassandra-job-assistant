@@ -11,13 +11,15 @@
       "mode": "fallback",
       "bullets": [
         "Highlighted achievements from Independent Data Analyst | BI & Automation Consultant."
-      ]
+      ],
+      "insert_index": 8
     },
     "Senior Transformation Analyst | PepsiCo": {
       "mode": "fallback",
       "bullets": [
         "Highlighted achievements from Senior Transformation Analyst | PepsiCo."
-      ]
+      ],
+      "insert_index": 14
     }
   }
 }
