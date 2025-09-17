@@ -4,35 +4,20 @@
   "closing_date": "2025-09-29",
   "jd_path": "runs/2025-09-17_which_is_it/inputs/jd.md",
   "jd_url": "",
-  "ats_score": 85,
+  "dummy_score": 85,
   "resume_file": "Gamal_Mensah_Resume_whichisit.docx",
   "roles": {
     "Independent Data Analyst | BI & Automation Consultant": {
       "mode": "baseline",
-      "bullets": [
-        "Automated reporting pipelines that saved 10+ hours weekly across client teams.",
-        "Built custom Power BI dashboards and SQL queries to improve decision-making speed by 30%.",
-        "Developed Python scripts to streamline data cleansing and reconciliation processes.",
-        "Implemented RPA workflows with UiPath to eliminate repetitive manual tasks."
-      ],
-      "insert_index": 9
+      "count": 4
     },
     "Senior Transformation Analyst | PepsiCo": {
       "mode": "baseline",
-      "bullets": [
-        "Raised Precision Ordering compliance from 69% to 95% by integrating dashboards, automation, and field team coaching.",
-        "Designed KPI dashboards that provided real-time visibility into sales, supply chain, and execution metrics.",
-        "Partnered with cross-functional teams to identify root causes of compliance gaps and drive corrective action.",
-        "Supported business transformation initiatives by analyzing large datasets and producing actionable insights."
-      ],
-      "insert_index": 19
+      "count": 4
     },
     "IT Analyst \u2013 R&D and Product Development | MPAC": {
       "mode": "baseline",
-      "bullets": [
-        "Key achievements from IT Analyst \u2013 R&D and Product Development | MPAC."
-      ],
-      "insert_index": 29
+      "count": 1
     }
   }
 }
