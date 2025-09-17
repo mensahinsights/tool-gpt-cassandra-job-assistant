@@ -11,7 +11,8 @@ def update_google_sheet(result_file, sheet_id):
     company = result.get("company", "")
     job_title = result.get("job_title", "")
     ats_score = result.get("ats_score", "")
-    resume_file = os.path.basename(result.get("resume_file", ""))
+    resume_file = result.get("resume_file", "")
+    bullet_mode = result.get("bullet_mode", "")
 
     creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     if not creds_json:
@@ -24,17 +25,18 @@ def update_google_sheet(result_file, sheet_id):
 
     service = build("sheets", "v4", credentials=creds)
 
-    values = [[company, job_title, ats_score, resume_file]]
+    # Append a row: [Company, Job Title, ATS Score, Resume Filename, Bullet Mode]
+    values = [[company, job_title, ats_score, resume_file, bullet_mode]]
     body = {"values": values}
 
     service.spreadsheets().values().append(
         spreadsheetId=sheet_id,
-        range="Sheet1!A:D",
+        range="Sheet1!A:E",
         valueInputOption="RAW",
         body=body
     ).execute()
 
-    print(f"[INFO] Google Sheet updated: {company}, {job_title}, {ats_score}, {resume_file}")
+    print(f"[INFO] Google Sheet updated: {company}, {job_title}, {ats_score}, {resume_file}, {bullet_mode}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
