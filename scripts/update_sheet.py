@@ -5,7 +5,6 @@ from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
 def update_google_sheet(result_file, sheet_id):
-    # Load result.json written by generate_resume_from_jd.py
     with open(result_file, "r", encoding="utf-8") as f:
         result = json.load(f)
 
@@ -14,7 +13,6 @@ def update_google_sheet(result_file, sheet_id):
     ats_score = result.get("ats_score", "")
     resume_file = os.path.basename(result.get("resume_file", ""))
 
-    # Build the Sheets API client
     creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     if not creds_json:
         raise ValueError("Missing GOOGLE_SHEETS_CREDENTIALS in env")
@@ -26,13 +24,12 @@ def update_google_sheet(result_file, sheet_id):
 
     service = build("sheets", "v4", credentials=creds)
 
-    # Append a row: [Company, Job Title, ATS Score, Resume Filename]
     values = [[company, job_title, ats_score, resume_file]]
     body = {"values": values}
 
     service.spreadsheets().values().append(
         spreadsheetId=sheet_id,
-        range="Sheet1!A:D",  # adjust if your sheet has different structure
+        range="Sheet1!A:D",
         valueInputOption="RAW",
         body=body
     ).execute()
