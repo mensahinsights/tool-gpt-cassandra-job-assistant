@@ -8,7 +8,7 @@ URL: https://www.linkedin.com/jobs/view/4298682831/
 
 Job Title: Market Insights Analyst
 
-Location: Greater Toronto Area (Etobicoke offices)
+Location: Greater Toronto Area (Etobicoke office)
 
 About Us:
 
