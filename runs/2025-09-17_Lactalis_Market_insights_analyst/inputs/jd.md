@@ -7,8 +7,6 @@ Closing Date:
 
 # Job Description
 
-Paste the target JD here. Keep the original phrasing so ATS terms are not lost.
-About the job
 Job Title: Market Insights Analyst
 
 Location: Greater Toronto Area (GTA Etobicoke office)
