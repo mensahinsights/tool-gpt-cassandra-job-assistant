@@ -1,10 +1,8 @@
-Here’s your job description with the em dashes removed and rephrased into commas so it reads smoothly:
+Company: Landmark Group
+Job Title: Product Analyst
+Closing Date: 2025-09-29
 
 ---
-
-**Company:** New Day
-**Job Title:** Product Analyst
-**Closing Date:**
 
 ---
 
