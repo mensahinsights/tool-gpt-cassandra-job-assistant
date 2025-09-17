@@ -43,8 +43,8 @@ def generate_bullets_for_role(role_title, job_title, company_name):
     if not os.environ.get("OPENAI_API_KEY"):
         return [f"Highlighted achievements from {role_title}."], "fallback"
 
-    client = OpenAI()  # reads key from OPENAI_API_KEY env
     try:
+        client = OpenAI()  # reads key from OPENAI_API_KEY
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -55,7 +55,8 @@ def generate_bullets_for_role(role_title, job_title, company_name):
                     "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
                     "Return only bullet points."
                 )}
-            ]
+            ],
+            timeout=30  # prevent hangs
         )
         content = response.choices[0].message.content
         bullets = content.split("\n")
