@@ -1,0 +1,20 @@
+{
+  "Independent Data Analyst | BI & Automation Consultant": [
+    "Automated reporting pipelines that saved 10+ hours weekly across client teams.",
+    "Built custom Power BI dashboards and SQL queries to improve decision-making speed by 30%.",
+    "Developed Python scripts to streamline data cleansing and reconciliation processes.",
+    "Implemented RPA workflows with UiPath to eliminate repetitive manual tasks."
+  ],
+  "Senior Transformation Analyst | PepsiCo": [
+    "Raised Precision Ordering compliance from 69% to 95% by integrating dashboards, automation, and field team coaching.",
+    "Designed KPI dashboards that provided real-time visibility into sales, supply chain, and execution metrics.",
+    "Partnered with cross-functional teams to identify root causes of compliance gaps and drive corrective action.",
+    "Supported business transformation initiatives by analyzing large datasets and producing actionable insights."
+  ],
+  "IT Analyst | MPAC": [
+    "Contributed to the development of an Automated Valuation Model (AVM) using SAS for municipal property assessments.",
+    "Optimized SQL-based pipelines to reduce reporting latency and improve reliability.",
+    "Validated property datasets and automated audit checks to improve data integrity.",
+    "Collaborated with R&D teams to design, test, and deploy enterprise-grade analytics tools."
+  ]
+}

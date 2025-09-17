@@ -108,3 +108,9 @@ Return sections in this order, Resume, Cover letter, LinkedIn summary, ATS repor
 
 ## Minimal prompt to start the run for a specific JD
 When the user gives a JD, run, Extract inputs, apply sections 3 to 16 above, then produce outputs in strict order with the style rules. Ask only if the JD is missing role title or industry, otherwise proceed.
+
+- Resume bullets are no longer read from the Word template. 
+- The script clears out any placeholders under each role heading in `resume_template.docx`. 
+- Tailored bullets are generated fresh each run using OpenAI, with 4–6 bullets per role. 
+- If OpenAI fails or provides too few, baseline bullets are loaded from `scripts/baselines.json` and padded to meet the minimum. 
+- The template must only contain section headings (no pre-filled bullets). 

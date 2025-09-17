@@ -5,8 +5,9 @@ from docx import Document
 from docx.oxml import OxmlElement
 from openai import OpenAI
 
-# Path to resume template
+# Paths
 TEMPLATE_PATH = Path("templates/resume_template.docx")
+BASELINES_PATH = Path("scripts/baselines.json")
 
 # Roles expected in the template
 ROLE_HEADINGS = [
@@ -15,9 +16,17 @@ ROLE_HEADINGS = [
     "IT Analyst | MPAC"
 ]
 
-# Bullet count rules based on recruiter best practices
+# Bullet count rules
 MIN_BULLETS_PER_ROLE = 4
 MAX_BULLETS_PER_ROLE = 6
+
+
+def load_baselines():
+    """Load baseline bullets from baselines.json"""
+    if not BASELINES_PATH.exists():
+        raise FileNotFoundError(f"Baseline file not found at {BASELINES_PATH}")
+    with open(BASELINES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def parse_jd(jd_path):
@@ -39,17 +48,18 @@ def parse_jd(jd_path):
     return company, job_title, closing_date, jd_url
 
 
-def generate_bullets_for_role(role_title, job_title, company_name):
+def generate_bullets_for_role(role_title, job_title, company_name, baselines):
     """
     Generate tailored bullets for a given role using OpenAI if available.
-    Enforce min (4) and max (6) bullets. Use fallback to fill gaps.
+    If too few, pad with baseline bullets from baselines.json.
+    Always enforce 4–6 bullets.
     """
     bullets = []
     mode = "fallback"
 
     if os.environ.get("OPENAI_API_KEY"):
         try:
-            client = OpenAI()  # reads key from OPENAI_API_KEY
+            client = OpenAI()
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -71,19 +81,35 @@ def generate_bullets_for_role(role_title, job_title, company_name):
         except Exception as e:
             print(f"[WARN] OpenAI request failed for {role_title}: {e}")
 
-    # If no usable bullets, fallback
+    # If too few, pad with baselines
+    baseline_bullets = baselines.get(role_title, [])
+    while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
+        bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
+
+    # If still empty → just use baselines
     if not bullets:
-        bullets = [f"Highlighted achievements from {role_title}."]
+        bullets = baseline_bullets or [f"Highlighted achievements from {role_title}."]
 
-    # Enforce min (pad with fallback)
-    while len(bullets) < MIN_BULLETS_PER_ROLE:
-        bullets.append(f"Additional highlight from {role_title}.")
-
-    # Enforce max (truncate)
+    # Cap at max
     if len(bullets) > MAX_BULLETS_PER_ROLE:
         bullets = bullets[:MAX_BULLETS_PER_ROLE]
 
     return bullets, mode
+
+
+def clear_role_bullets(doc, role_idx):
+    """Remove any existing bullets under a role heading in the template."""
+    to_remove = []
+    for j in range(role_idx + 1, len(doc.paragraphs)):
+        para = doc.paragraphs[j]
+        if any(r in para.text for r in ROLE_HEADINGS if r != doc.paragraphs[role_idx].text) \
+           or "Education & Certifications" in para.text:
+            break
+        if para.style and para.style.name.startswith("List Bullet"):
+            to_remove.append(para)
+
+    for p in to_remove:
+        p._element.getparent().remove(p._element)
 
 
 def insert_paragraph(doc, index, text, style=None):
@@ -96,11 +122,10 @@ def insert_paragraph(doc, index, text, style=None):
     return new_para
 
 
-def embed_bullets(doc, job_title, company_name):
+def embed_bullets(doc, job_title, company_name, baselines):
     """
-    Insert 4–6 tailored bullets under each role heading,
-    before next role or Education.
-    Returns dict: {role: {"mode": "...", "bullets": [...], "insert_index": int}, ...}
+    Replace role bullets with tailored ones.
+    Returns dict with metadata for debugging.
     """
     results = {}
 
@@ -115,24 +140,20 @@ def embed_bullets(doc, job_title, company_name):
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Find insertion point after last bullet in this role
-        insert_idx = role_idx
-        for j in range(role_idx + 1, len(doc.paragraphs)):
-            text = doc.paragraphs[j].text
-            if any(r in text for r in ROLE_HEADINGS if r != role) or "Education & Certifications" in text:
-                break
-            if doc.paragraphs[j].style and doc.paragraphs[j].style.name.startswith("List Bullet"):
-                insert_idx = j
+        # Clear existing bullets from template
+        clear_role_bullets(doc, role_idx)
 
-        bullets, mode = generate_bullets_for_role(role, job_title, company_name)
+        # Generate tailored bullets (with fallback padding)
+        bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
 
         results[role] = {
             "mode": mode,
             "bullets": bullets,
-            "insert_index": insert_idx
+            "insert_index": role_idx
         }
 
-        # Insert bullets one by one after insert_idx
+        # Insert bullets
+        insert_idx = role_idx
         for b in bullets:
             insert_paragraph(doc, insert_idx, b, style="List Bullet")
             insert_idx += 1
@@ -142,16 +163,17 @@ def embed_bullets(doc, job_title, company_name):
     return results
 
 
-def build_resume(company_name, job_title):
+def build_resume(company_name, job_title, baselines):
     """Load template and insert tailored bullets for each role"""
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
     doc = Document(TEMPLATE_PATH)
-    role_data = embed_bullets(doc, job_title, company_name)
+    role_data = embed_bullets(doc, job_title, company_name, baselines)
     return doc, role_data
 
 
 def main(jd_path):
+    baselines = load_baselines()
     company_name, job_title, closing_date, jd_url = parse_jd(jd_path)
     if not company_name:
         raise ValueError(f"No company found in {jd_path}")
@@ -167,7 +189,7 @@ def main(jd_path):
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
     out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.docx"
-    resume, role_data = build_resume(company_name, job_title)
+    resume, role_data = build_resume(company_name, job_title, baselines)
     resume.save(out_file)
 
     ats_data = {
