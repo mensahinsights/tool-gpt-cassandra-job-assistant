@@ -45,3 +45,13 @@ jobs:
           git add runs/**/outputs/* || true
           git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
           git push || echo "[DEBUG] Nothing new to push"
+
+      - name: Update Google Sheet
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: |
+          echo "[DEBUG] Updating Google Sheet..."
+          find runs -type f -path "*/outputs/result.json" | while read result; do
+            python scripts/update_sheet.py "$result"
+          done
