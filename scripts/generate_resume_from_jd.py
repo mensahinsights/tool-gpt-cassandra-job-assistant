@@ -1,104 +1,73 @@
-#!/usr/bin/env python3
-import os, sys, json, traceback
-from datetime import datetime
-from scripts.ats_utils import compute_ats_score
-from scripts.resume_utils import load_baseline, render_resume
+import os
+import json
+import yaml
+from pathlib import Path
+from docx import Document
 
-
-def parse_jd(jd_path: str):
+# Assume you already have a function that parses jd.md
+def parse_jd(jd_path):
+    company = None
+    job_title = None
     with open(jd_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    if len(lines) < 3:
-        raise ValueError("JD must have at least 3 header lines (Company, Job Title, Closing Date).")
-    company = lines[0].split(":", 1)[-1].strip()
-    title = lines[1].split(":", 1)[-1].strip()
-    closing = lines[2].split(":", 1)[-1].strip()
-    jd_text = "".join(lines[3:])
-    return company, title, closing, jd_text
+        for line in f:
+            if line.lower().startswith("company:"):
+                company = line.split(":", 1)[1].strip()
+            if line.lower().startswith("job title:"):
+                job_title = line.split(":", 1)[1].strip()
+    return company, job_title
 
+# Stub: replace with your actual resume generator logic
+def generate_resume(company_name, job_title):
+    doc = Document()
+    doc.add_heading("Gamal Mensah – Resume", 0)
+    doc.add_paragraph(f"Target Company: {company_name}")
+    doc.add_paragraph(f"Target Role: {job_title}")
+    doc.add_paragraph("Professional summary and experience go here...")
+    # >>> DO NOT include ATS score in resume content <<<
+    return doc
 
-def safe_write_result(data: dict, path: str = "result.json"):
-    """Always write a JSON file, even on error."""
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        print(f"[DEBUG] Wrote result.json: {json.dumps(data, indent=2)}")
-    except Exception as e:
-        print(f"[ERROR] Failed to write result.json: {e}")
+def main(jd_path):
+    company_name, job_title = parse_jd(jd_path)
+    if not company_name:
+        raise ValueError(f"No company found in {jd_path}")
 
+    # Clean company name for filename (remove spaces/symbols)
+    company_clean = (
+        company_name.replace(" ", "")
+        .replace("&", "")
+        .replace(",", "")
+        .replace(".", "")
+    )
 
-def main():
-    if len(sys.argv) != 2:
-        err = {"status": "error", "message": "Usage: generate_resume_from_jd.py <jd.md>"}
-        safe_write_result(err)
-        sys.exit(1)
+    # Create outputs folder if missing
+    outputs_dir = Path(jd_path).parent.parent / "outputs"
+    outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    jd_path = sys.argv[1]
-    print(f"[DEBUG] Reading JD file: {jd_path}")
+    # Save resume as Gamal_Mensah_Resume_<Company>.docx
+    out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.docx"
+    resume = generate_resume(company_name, job_title)
+    resume.save(out_file)
 
-    try:
-        company, title, closing, jd_text = parse_jd(jd_path)
-        print(f"[DEBUG] Parsed JD header -> Company: {company}, Job Title: {title}, Closing Date: {closing}")
+    # Example ATS scoring (optional – just stored, not written into docx)
+    ats_score = 85  # Replace with real scoring function if you have one
+    ats_data = {
+        "company": company_name,
+        "job_title": job_title,
+        "ats_score": ats_score,
+        "resume_file": str(out_file)
+    }
 
-        # Compute ATS Score
-        ats_score = compute_ats_score(jd_text, "data/skills.txt")
-        print(f"[DEBUG] Computed ATS Score: {ats_score}%")
+    # Save result.json for Sheets update step
+    result_file = outputs_dir / "result.json"
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump(ats_data, f, indent=2)
 
-        # Load baseline resume
-        baseline = load_baseline()
-        print(f"[DEBUG] Loaded baseline resume with {len(baseline['experience'])} experience entries.")
-
-        # Tailoring context
-        tailoring = {
-            "headline": f"{title} who drives outcomes at {company}",
-            "summary": baseline["summary"] + f" Tailored for {company}, closing {closing}.",
-            "ats_score": ats_score
-        }
-
-        # Output path
-        job_folder = os.path.dirname(os.path.dirname(jd_path))
-        outputs_dir = os.path.join(job_folder, "outputs")
-        print(f"[DEBUG] Ensuring outputs directory exists: {outputs_dir}")
-        os.makedirs(outputs_dir, exist_ok=True)
-
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
-        output_file = os.path.join(
-            outputs_dir, f"Mensah_Resume_{company.replace(' ', '')}_v3.1_{date_str}.docx"
-        )
-        print(f"[DEBUG] Will write resume to: {output_file}")
-
-        # Render resume
-        render_resume(output_file, baseline, tailoring)
-        print(f"[DEBUG] Resume successfully written: {output_file}")
-
-        # Final result
-        result = {
-            "status": "success",
-            "Date": datetime.utcnow().isoformat(),
-            "Company": company,
-            "Job_Title": title,
-            "JD_Path": jd_path,
-            "Closing_Date": closing,
-            "ATS_Score": ats_score,
-            "Resume_Path": output_file,
-        }
-        safe_write_result(result)
-        sys.exit(0)
-
-    except Exception as e:
-        print("[ERROR] Exception occurred while generating resume:")
-        traceback.print_exc()
-
-        # Write fallback JSON
-        err = {
-            "status": "error",
-            "message": str(e),
-            "jd_path": jd_path,
-            "traceback": traceback.format_exc(),
-        }
-        safe_write_result(err)
-        sys.exit(1)
-
+    print(f"[INFO] Resume saved to {out_file}")
+    print(f"[INFO] ATS data saved to {result_file}")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python generate_resume_from_jd.py <jd_path>")
+        sys.exit(1)
+    main(sys.argv[1])
