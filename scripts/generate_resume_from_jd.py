@@ -8,6 +8,10 @@ try:
 except ImportError:
     openai = None
 
+
+TEMPLATE_PATH = Path("resume_template.docx")
+
+
 def parse_jd(jd_path):
     """Extract company and job title from jd.md"""
     company = None
@@ -19,6 +23,7 @@ def parse_jd(jd_path):
             if line.lower().startswith("job title:"):
                 job_title = line.split(":", 1)[1].strip()
     return company, job_title
+
 
 def generate_bullet_points(job_title, company_name):
     """Generate tailored bullet points using OpenAI if key is set, otherwise fallback"""
@@ -51,20 +56,24 @@ def generate_bullet_points(job_title, company_name):
             "Implemented dashboards that reduced analysis time by 50%."
         ], "fallback"
 
-def generate_resume(company_name, job_title):
-    """Build the resume .docx"""
+
+def build_resume(company_name, job_title):
+    """Load template and append tailored achievements"""
+    if not TEMPLATE_PATH.exists():
+        raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
+
+    doc = Document(TEMPLATE_PATH)
+
+    # Add tailored section at the end
+    doc.add_page_break()
+    doc.add_heading(f"Key Achievements for {job_title} at {company_name}", level=1)
+
     bullets, mode = generate_bullet_points(job_title, company_name)
-
-    doc = Document()
-    doc.add_heading("Gamal Mensah – Resume", 0)
-    doc.add_paragraph(f"Target Company: {company_name}")
-    doc.add_paragraph(f"Target Role: {job_title}")
-
-    doc.add_heading("Key Achievements", level=1)
     for bullet in bullets:
         doc.add_paragraph(bullet, style="List Bullet")
 
     return doc, mode, bullets
+
 
 def main(jd_path):
     company_name, job_title = parse_jd(jd_path)
@@ -82,7 +91,7 @@ def main(jd_path):
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
     out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.docx"
-    resume, mode, bullets = generate_resume(company_name, job_title)
+    resume, mode, bullets = build_resume(company_name, job_title)
     resume.save(out_file)
 
     ats_score = 85  # Replace with real scoring logic if needed
@@ -101,6 +110,7 @@ def main(jd_path):
 
     print(f"[INFO] Resume saved to {out_file}")
     print(f"[INFO] ATS data saved to {result_file}")
+
 
 if __name__ == "__main__":
     import sys
