@@ -2,7 +2,6 @@ import os
 import json
 from pathlib import Path
 from docx import Document
-from docx.oxml import OxmlElement
 from openai import OpenAI
 
 # Paths
@@ -83,7 +82,7 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
 
     baseline_bullets = baselines.get(role_title, [])
 
-    # If too few, pad with baselines
+    # Pad with baseline bullets if fewer than MIN
     while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
         bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
@@ -114,20 +113,10 @@ def clear_role_bullets(doc, role_idx):
         p._element.getparent().remove(p._element)
 
 
-def insert_paragraph(doc, index, text, style=None):
-    """Insert a new paragraph at a given index."""
-    p = doc.paragraphs[index]._element
-    new_p = OxmlElement("w:p")
-    p.addnext(new_p)
-    new_para = doc.paragraphs[index]._parent.add_paragraph(text, style=style)
-    new_p.addnext(new_para._element)
-    return new_para
-
-
 def embed_bullets(doc, job_title, company_name, baselines):
     """
     Replace role bullets with tailored ones, ensuring bullets
-    are placed after the date/location line.
+    are placed directly after the date/location line.
     Returns dict with metadata for debugging.
     """
     results = {}
@@ -143,13 +132,12 @@ def embed_bullets(doc, job_title, company_name, baselines):
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Clear any bullets under this role (template should have none, but safety first)
+        # Clear any bullets under this role
         clear_role_bullets(doc, role_idx)
 
-        # Ensure bullets are inserted after the date/location line
-        insert_idx = role_idx + 1  # by default
-        if role_idx + 1 < len(doc.paragraphs):
-            insert_idx = role_idx + 1
+        # Date/location line is always immediately after role heading
+        date_idx = role_idx + 1
+        insert_idx = date_idx + 1
 
         # Generate tailored bullets (with fallback padding)
         bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
@@ -160,11 +148,12 @@ def embed_bullets(doc, job_title, company_name, baselines):
             "insert_index": insert_idx
         }
 
-        # Insert bullets after the date/location line
-        for offset, b in enumerate(bullets):
-            insert_paragraph(doc, insert_idx + offset, b, style="List Bullet")
+        # Insert bullets immediately after date/location (no gaps)
+        para = doc.paragraphs[date_idx]
+        for b in bullets:
+            para = para.insert_paragraph_after(b, style="List Bullet")
 
-        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) at paragraph {insert_idx}")
+        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) after line {date_idx}")
 
     return results
 
