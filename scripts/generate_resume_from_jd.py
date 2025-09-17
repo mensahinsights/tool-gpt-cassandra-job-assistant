@@ -111,6 +111,9 @@ def build_resume(jd_path: Path, baselines: dict):
     resume_filename = f"Gamal_Mensah_Resume_{company.replace(' ', '')}.md"
     resume_path = out_dir / resume_filename
     result_path = out_dir / "result.json"
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
+
 
     sections = []
 

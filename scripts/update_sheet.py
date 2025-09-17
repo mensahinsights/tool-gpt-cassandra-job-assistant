@@ -29,6 +29,10 @@ def update_sheet(result_json_path: str):
             json.dumps(result.get("roles_processed", {}))
         ]
 
+        print(f"[DEBUG] Row prepared: {row}")
+        print(f"[DEBUG] Sheet ID: {sheet_id}")
+
+
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,

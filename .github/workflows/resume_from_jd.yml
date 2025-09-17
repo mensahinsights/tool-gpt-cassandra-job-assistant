@@ -53,5 +53,7 @@ jobs:
         run: |
           echo "[DEBUG] Updating Google Sheet..."
           find runs -type f -path "*/outputs/result.json" | while read result; do
+            echo "[DEBUG] Sending $result"
             python scripts/update_sheet.py "$result"
           done
+
