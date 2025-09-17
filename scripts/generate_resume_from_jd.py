@@ -13,7 +13,7 @@ BASELINES_PATH = Path("scripts/baselines.json")
 ROLE_HEADINGS = [
     "Independent Data Analyst | BI & Automation Consultant",
     "Senior Transformation Analyst | PepsiCo",
-    "IT Analyst | MPAC"
+    "IT Analyst – R&D and Product Development | MPAC"
 ]
 
 # Bullet count rules
@@ -51,11 +51,11 @@ def parse_jd(jd_path):
 def generate_bullets_for_role(role_title, job_title, company_name, baselines):
     """
     Generate tailored bullets for a given role using OpenAI if available.
-    If too few, pad with baseline bullets from baselines.json.
+    If too few, pad with baseline bullets.
     Always enforce 4–6 bullets.
     """
     bullets = []
-    mode = "fallback"
+    mode = "baseline"
 
     if os.environ.get("OPENAI_API_KEY"):
         try:
@@ -76,19 +76,20 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
             content = resp.choices[0].message.content
             candidate = [b.strip("-• ") for b in content.split("\n") if b.strip()]
             if candidate:
-                mode = "openai"
                 bullets = candidate
+                mode = "openai"
         except Exception as e:
             print(f"[WARN] OpenAI request failed for {role_title}: {e}")
 
-    # If too few, pad with baselines
     baseline_bullets = baselines.get(role_title, [])
+
+    # If too few, pad with baselines
     while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
         bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
     # If still empty → just use baselines
     if not bullets:
-        bullets = baseline_bullets or [f"Highlighted achievements from {role_title}."]
+        bullets = baseline_bullets or [f"Key achievements from {role_title}."]
 
     # Cap at max
     if len(bullets) > MAX_BULLETS_PER_ROLE:
@@ -102,11 +103,12 @@ def clear_role_bullets(doc, role_idx):
     to_remove = []
     for j in range(role_idx + 1, len(doc.paragraphs)):
         para = doc.paragraphs[j]
+        if para.style and para.style.name.startswith("List Bullet"):
+            to_remove.append(para)
+        # Stop clearing when we hit the next role heading or Education
         if any(r in para.text for r in ROLE_HEADINGS if r != doc.paragraphs[role_idx].text) \
            or "Education & Certifications" in para.text:
             break
-        if para.style and para.style.name.startswith("List Bullet"):
-            to_remove.append(para)
 
     for p in to_remove:
         p._element.getparent().remove(p._element)
@@ -124,7 +126,8 @@ def insert_paragraph(doc, index, text, style=None):
 
 def embed_bullets(doc, job_title, company_name, baselines):
     """
-    Replace role bullets with tailored ones.
+    Replace role bullets with tailored ones, ensuring bullets
+    are placed after the date/location line.
     Returns dict with metadata for debugging.
     """
     results = {}
@@ -140,8 +143,13 @@ def embed_bullets(doc, job_title, company_name, baselines):
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Clear existing bullets from template
+        # Clear any bullets under this role (template should have none, but safety first)
         clear_role_bullets(doc, role_idx)
+
+        # Ensure bullets are inserted after the date/location line
+        insert_idx = role_idx + 1  # by default
+        if role_idx + 1 < len(doc.paragraphs):
+            insert_idx = role_idx + 1
 
         # Generate tailored bullets (with fallback padding)
         bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
@@ -149,14 +157,12 @@ def embed_bullets(doc, job_title, company_name, baselines):
         results[role] = {
             "mode": mode,
             "bullets": bullets,
-            "insert_index": role_idx
+            "insert_index": insert_idx
         }
 
-        # Insert bullets
-        insert_idx = role_idx
-        for b in bullets:
-            insert_paragraph(doc, insert_idx, b, style="List Bullet")
-            insert_idx += 1
+        # Insert bullets after the date/location line
+        for offset, b in enumerate(bullets):
+            insert_paragraph(doc, insert_idx + offset, b, style="List Bullet")
 
         print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) at paragraph {insert_idx}")
 
