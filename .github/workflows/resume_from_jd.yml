@@ -1,4 +1,4 @@
-name: Generate Resume from JD
+name: Generate Resume from JD (Markdown)
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install python-docx google-auth google-auth-httplib2 google-api-python-client pyyaml openai
+          pip install openai pyyaml
 
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
@@ -43,15 +43,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: resumes
-          path: runs/**/outputs/*.docx
+          path: runs/**/outputs/*.md
 
-      - name: Commit Outputs
+      - name: (Optional) Convert Markdown to DOCX/PDF with Pandoc
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "github-actions"
-          git add runs/**/outputs/*.docx || true
-          git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
-          git push || echo "[DEBUG] Nothing new to push"
-
-      - name: Debug run finished
-        run: echo "[DEBUG] Workflow completed successfully"
+          sudo apt-get update && sudo apt-get install -y pandoc texlive-xetex
+          for f in runs/**/outputs/*.md; do
+            [ -f "$f" ] || continue
+            pandoc "$f" -o "${f%.md}.docx"
+            pandoc "$f" -o "${f%.md}.pdf"
+          done
