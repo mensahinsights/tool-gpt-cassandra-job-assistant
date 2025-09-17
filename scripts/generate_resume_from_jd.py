@@ -8,7 +8,7 @@ from docx.shared import Pt
 from openai import OpenAI
 
 # Paths
-TEMPLATE_PATH = Path("templates/resume_template_cleaned.docx")
+TEMPLATE_PATH = Path("templates/resume_template_cleaned_v2.docx")
 BASELINES_PATH = Path("scripts/baselines.json")
 
 ROLE_HEADINGS = [
@@ -94,12 +94,13 @@ def normalize_bullets(openai_bullets, baseline_bullets):
         mode = "baseline"
     else:
         bullets = ["Highlights available upon request."] * MIN_BULLETS
-        mode = "fallback"
+        mode = "filler"
 
     return bullets, mode
 
 
 def clear_role_bullets(doc, role_idx):
+    """Remove existing bullets for a role so they can be re-inserted cleanly."""
     to_remove = []
     for j in range(role_idx + 1, len(doc.paragraphs)):
         para = doc.paragraphs[j]
@@ -128,7 +129,8 @@ def embed_bullets(doc, job_title, company_name, baselines):
         date_para = doc.paragraphs[role_idx + 1]
 
         openai_bullets = safe_openai_request(role, job_title, company_name)
-        bullets, mode = normalize_bullets(openai_bullets, baselines.get(role, []))
+        baseline_bullets = baselines.get(role, [])
+        bullets, mode = normalize_bullets(openai_bullets, baseline_bullets)
 
         results[role] = {"mode": mode, "count": len(bullets)}
 
