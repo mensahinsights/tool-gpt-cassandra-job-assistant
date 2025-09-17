@@ -19,7 +19,6 @@ MIN_BULLETS = 4
 MAX_BULLETS = 6
 
 def normalize_text(text: str) -> str:
-    """Replace em/en dashes with hyphen and collapse whitespace."""
     text = text.replace("–", "-").replace("—", "-")
     return re.sub(r"\s+", " ", text).strip()
 
@@ -112,11 +111,11 @@ def build_resume(company_name, job_title, closing_date, jd_url, baselines):
         results[role] = {"mode": mode, "count": len(bullets)}
 
         if "Independent Data Analyst" in role:
-            date_line = "**Jan 2025 – Present | Greater Toronto Area, Canada**"
+            date_line = "**Jan 2025 - Present | Greater Toronto Area, Canada**"
         elif "PepsiCo" in role:
-            date_line = "**Mar 2020 – Jan 2025 | Mississauga, ON**"
+            date_line = "**Mar 2020 - Jan 2025 | Mississauga, ON**"
         elif "MPAC" in role:
-            date_line = "**Aug 2003 – Mar 2020 | Pickering, ON**"
+            date_line = "**Aug 2003 - Mar 2020 | Pickering, ON**"
         else:
             date_line = ""
 
