@@ -55,12 +55,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: resumes
-          path: runs/**/outputs/*.docx
+          path: |
+            runs/**/outputs/*.docx
+            runs/**/outputs/result.json
 
       - name: List generated resume files
         run: |
           echo "[INFO] Generated resumes:"
           ls -lh runs/**/outputs/*.docx || echo "[WARN] No resumes found"
+          echo "[INFO] Generated metadata:"
+          ls -lh runs/**/outputs/result.json || echo "[WARN] No result.json found"
 
       - name: Commit Outputs
         run: |

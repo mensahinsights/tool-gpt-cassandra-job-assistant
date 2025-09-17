@@ -8,7 +8,7 @@ try:
 except ImportError:
     openai = None
 
-# Correct path to the template
+# Path to the committed resume template
 TEMPLATE_PATH = Path("templates/resume_template.docx")
 
 
@@ -57,20 +57,41 @@ def generate_bullet_points(job_title, company_name):
         ], "fallback"
 
 
+def embed_bullets_in_experience(doc, bullets):
+    """
+    Find 'Independent Data Analyst | BI & Automation Consultant' heading
+    and append tailored bullets directly under it.
+    """
+    target_heading = "Independent Data Analyst | BI & Automation Consultant"
+    found = False
+    for para in doc.paragraphs:
+        if target_heading in para.text:
+            found = True
+        elif found and para.style.name.startswith("List Bullet"):
+            # Continue through existing bullets
+            continue
+        elif found and para.text.strip() == "":
+            # Blank line after bullets → insert tailored bullets here
+            for bullet in bullets:
+                doc.add_paragraph(bullet, style="List Bullet")
+            break
+    if not found:
+        print("[WARN] Target role not found, appending tailored bullets at the end.")
+        doc.add_page_break()
+        doc.add_heading("Tailored Achievements", level=1)
+        for bullet in bullets:
+            doc.add_paragraph(bullet, style="List Bullet")
+
+
 def build_resume(company_name, job_title):
-    """Load template and append tailored achievements"""
+    """Load template and inject tailored bullets"""
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
 
     doc = Document(TEMPLATE_PATH)
 
-    # Add tailored section at the end
-    doc.add_page_break()
-    doc.add_heading(f"Key Achievements for {job_title} at {company_name}", level=1)
-
     bullets, mode = generate_bullet_points(job_title, company_name)
-    for bullet in bullets:
-        doc.add_paragraph(bullet, style="List Bullet")
+    embed_bullets_in_experience(doc, bullets)
 
     return doc, mode, bullets
 
