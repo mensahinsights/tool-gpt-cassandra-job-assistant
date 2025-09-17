@@ -1,0 +1,15 @@
+# Resume Generation Dependencies (pinned for stability)
+
+# Word document handling
+python-docx==1.1.2
+
+# Google Sheets API
+google-auth==2.35.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.149.0
+
+# Config parsing
+pyyaml==6.0.2
+
+# OpenAI SDK (compatible with generate_resume_from_jd.py)
+openai==1.40.6

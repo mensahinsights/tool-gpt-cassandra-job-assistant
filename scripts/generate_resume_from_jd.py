@@ -3,11 +3,7 @@ import json
 from pathlib import Path
 from docx import Document
 from docx.oxml import OxmlElement
-
-try:
-    import openai
-except ImportError:
-    openai = None
+from openai import OpenAI
 
 # Path to resume template
 TEMPLATE_PATH = Path("templates/resume_template.docx")
@@ -45,12 +41,12 @@ def generate_bullets_for_role(role_title, job_title, company_name):
     Fallback: safe highlight bullet.
     """
     api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key or not openai:
+    if not api_key:
         return [f"Highlighted achievements from {role_title}."], "fallback"
 
-    openai.api_key = api_key
+    client = OpenAI(api_key=api_key)
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert resume writer."},
@@ -62,7 +58,8 @@ def generate_bullets_for_role(role_title, job_title, company_name):
                 )}
             ]
         )
-        bullets = response.choices[0].message["content"].split("\n")
+        content = response.choices[0].message.content
+        bullets = content.split("\n")
         clean_bullets = [b.strip("-• ") for b in bullets if b.strip()]
         if not clean_bullets:
             return [f"Highlighted achievements from {role_title}."], "fallback"
@@ -72,11 +69,12 @@ def generate_bullets_for_role(role_title, job_title, company_name):
         return [f"Highlighted achievements from {role_title}."], "fallback"
 
 
-def insert_paragraph_after(paragraph, text, style=None):
-    """Helper: Insert a new paragraph directly after a given one."""
+def insert_paragraph(doc, index, text, style=None):
+    """Insert a new paragraph at a given index."""
+    p = doc.paragraphs[index]._element
     new_p = OxmlElement("w:p")
-    paragraph._element.addnext(new_p)
-    new_para = paragraph._parent.add_paragraph(text, style=style)
+    p.addnext(new_p)
+    new_para = doc.paragraphs[index]._parent.add_paragraph(text, style=style)
     new_p.addnext(new_para._element)
     return new_para
 
@@ -90,29 +88,28 @@ def embed_bullets(doc, job_title, company_name):
     results = {}
 
     for role in ROLE_HEADINGS:
-        role_para = None
+        role_idx = None
         for i, para in enumerate(doc.paragraphs):
             if role in para.text:
-                role_para = para
-                role_index = i
+                role_idx = i
                 break
 
-        if not role_para:
+        if role_idx is None:
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Find where to insert bullets (after last existing bullet for this role)
-        insert_after = role_para
-        for para in doc.paragraphs[role_index + 1:]:
-            if any(r in para.text for r in ROLE_HEADINGS if r != role) or "Education & Certifications" in para.text:
+        # Default insertion point is right after the heading
+        insert_idx = role_idx
+
+        # Walk forward to find last bullet before next section
+        for j in range(role_idx + 1, len(doc.paragraphs)):
+            text = doc.paragraphs[j].text
+            if any(r in text for r in ROLE_HEADINGS if r != role) or "Education & Certifications" in text:
                 break
-            if para.style and para.style.name.startswith("List Bullet"):
-                insert_after = para
+            if doc.paragraphs[j].style and doc.paragraphs[j].style.name.startswith("List Bullet"):
+                insert_idx = j
 
         bullets, mode = generate_bullets_for_role(role, job_title, company_name)
-
-        # Capture the insertion index for debugging
-        insert_idx = doc.paragraphs.index(insert_after)
 
         results[role] = {
             "mode": mode,
@@ -120,10 +117,10 @@ def embed_bullets(doc, job_title, company_name):
             "insert_index": insert_idx
         }
 
-        # Insert bullets immediately after insert_after
+        # Insert bullets one by one after insert_idx
         for bullet in bullets:
-            insert_paragraph_after(insert_after, bullet, style="List Bullet")
-            insert_after = doc.paragraphs[-1]
+            insert_paragraph(doc, insert_idx, bullet, style="List Bullet")
+            insert_idx += 1
 
         print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) at paragraph {insert_idx}")
 
