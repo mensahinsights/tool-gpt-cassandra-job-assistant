@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import yaml
 import re
 from pathlib import Path
 from openai import OpenAI
@@ -17,8 +16,11 @@ BASELINES_PATH = "baselines.json"
 # --------------------------
 def normalize_text(text: str) -> str:
     """Ensure ASCII-only: replace dashes, normalize quotes, trim whitespace."""
-    text = text.replace("—", "-").replace("–", "-")
-    text = text.replace("“", "\"").replace("”", "\"").replace("’", "'")
+    text = text.replace("\u2014", "-")  # em dash
+    text = text.replace("\u2013", "-")  # en dash
+    text = text.replace("\u201C", "\"").replace("\u201D", "\"")  # curly double quotes
+    text = text.replace("\u2018", "'").replace("\u2019", "'")   # curly single quotes
+    text = text.replace("\u2022", "-")  # bullet
     return text.strip()
 
 def load_baselines() -> dict:
@@ -41,7 +43,7 @@ def parse_jd_header(jd_path: Path) -> dict:
         elif line.startswith("URL:"):
             header["jd_url"] = normalize_text(line.split(":", 1)[1].strip())
         if line.strip() == "":
-            break  # stop after header
+            break
     return header
 
 def generate_ai_bullets(role: str, job_title: str, company: str, baseline: list) -> list:
@@ -53,7 +55,7 @@ def generate_ai_bullets(role: str, job_title: str, company: str, baseline: list)
     try:
         client = OpenAI(api_key=api_key)
         prompt = (
-            f"Tailor 4–6 resume bullets for the role '{role}' so they align with the job title '{job_title}' "
+            f"Tailor 4-6 resume bullets for the role '{role}' so they align with the job title '{job_title}' "
             f"at company '{company}'. Use action verbs, quantify impact where possible, avoid placeholders."
         )
 
@@ -69,15 +71,14 @@ def generate_ai_bullets(role: str, job_title: str, company: str, baseline: list)
 
         raw = response.choices[0].message.content.strip()
         bullets = [normalize_text(line) for line in raw.split("\n") if line.strip()]
-        # Remove leading symbols like "-", "*", "•"
-        bullets = [re.sub(r"^[\-\*\•]\s*", "", b) for b in bullets]
+        bullets = [re.sub(r"^[\-\*\u2022]\s*", "", b) for b in bullets]
         return bullets
     except Exception as e:
         print(f"[DEBUG] OpenAI request failed for {role}: {e}")
         return []
 
 def enforce_bullet_count(bullets: list, baseline: list) -> (list, str):
-    """Guarantee 4–6 bullets. Use baseline or defaults if AI fails."""
+    """Guarantee 4-6 bullets. Use baseline or defaults if AI fails."""
     defaults = [
         "Analyzed data to support decision-making.",
         "Collaborated with teams to improve processes.",
@@ -113,16 +114,13 @@ def build_resume(jd_path: Path, baselines: dict):
 
     sections = []
 
-    # Contact
     if "Contact" in baselines:
         sections.append(f"# Gamal Mensah Resume\n\n{baselines['Contact']}")
 
-    # Summary
     if "Summary" in baselines:
         summary_text = " ".join([normalize_text(s) for s in baselines["Summary"]])
         sections.append(f"## Summary\n{summary_text}")
 
-    # Work Experience
     work_lines = ["## Work Experience"]
     roles_processed = {}
 
@@ -134,30 +132,25 @@ def build_resume(jd_path: Path, baselines: dict):
         bullets, mode = enforce_bullet_count(ai_bullets, baseline_bullets)
 
         work_lines.append(f"### {role}")
-        work_lines.append(f"- {bullets[0]}")
-        for b in bullets[1:]:
+        for b in bullets:
             work_lines.append(f"- {b}")
 
-        print(f"[DEBUG] Role: {role} → {mode} ({len(bullets)} bullets)")
+        print(f"[DEBUG] Role: {role} -> {mode} ({len(bullets)} bullets)")
         roles_processed[role] = {"mode": mode, "bullet_count": len(bullets)}
 
     sections.append("\n".join(work_lines))
 
-    # Education
     if "Education" in baselines:
         edu_lines = ["## Education"] + [f"- {normalize_text(e)}" for e in baselines["Education"]]
         sections.append("\n".join(edu_lines))
 
-    # Skills
     if "Skills" in baselines:
         skill_lines = ["## Skills"] + [f"- {normalize_text(s)}" for s in baselines["Skills"]]
         sections.append("\n".join(skill_lines))
 
-    # Write resume.md
     with open(resume_path, "w", encoding="utf-8") as f:
         f.write("\n\n".join(sections))
 
-    # Write result.json
     result = {
         "company": company,
         "job_title": job_title,
