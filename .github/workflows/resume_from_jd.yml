@@ -9,21 +9,26 @@ on:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - run: |
+      - name: Install dependencies
+        run: |
           pip install python-docx google-auth google-auth-httplib2 google-api-python-client pyyaml
 
-      - name: Generate Resume
+      - name: Generate Resume(s)
         run: |
+          echo "[DEBUG] Scanning for jd.md files..."
           find runs -type f -path "*/inputs/jd.md" | while read jd; do
-            echo "Processing $jd"
-            python scripts/generate_resume_from_jd.py "$jd" > result.json
+            echo "[DEBUG] Processing JD: $jd"
+            python scripts/generate_resume_from_jd.py "$jd" | tee result.json
           done
 
       - name: Upload resume artifacts
@@ -37,7 +42,7 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
           git add runs/**/outputs/*.docx || true
-          git commit -m "Add generated resumes" || echo "No changes"
+          git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
           git push
 
       - name: Update Google Sheet
@@ -45,4 +50,5 @@ jobs:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
+          echo "[DEBUG] Updating Google Sheet with result.json..."
           python scripts/update_sheet.py result.json
