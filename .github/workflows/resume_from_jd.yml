@@ -28,8 +28,13 @@ jobs:
           echo "[DEBUG] Scanning for jd.md files..."
           find runs -type f -path "*/inputs/jd.md" | while read jd; do
             echo "[DEBUG] Processing JD: $jd"
-            python scripts/generate_resume_from_jd.py "$jd" | tee result.json
+            python scripts/generate_resume_from_jd.py "$jd"
           done
+
+      - name: Debug outputs directory
+        run: |
+          echo "[DEBUG] Listing outputs folder contents:"
+          ls -R runs || true
 
       - name: Upload resume artifacts
         uses: actions/upload-artifact@v4
@@ -41,7 +46,6 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
-          # git add won't fail if no files match
           git add runs/**/outputs/*.docx || true
           git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
           git push || echo "[DEBUG] Nothing new to push"
