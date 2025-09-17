@@ -1,5 +1,5 @@
 Company: Testy
-Job Title: Data Analyst
+Job Title: Data Analysts
 Closing Date: 
 URL: https://www.linkedin.com/jobs/view/4298682831/
 ---
