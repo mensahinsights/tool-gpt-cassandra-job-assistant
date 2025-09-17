@@ -3,7 +3,7 @@ name: Generate Resume from JD
 on:
   push:
     paths:
-      - 'run/**/inputs/jd.md'
+      - 'runs/**/inputs/jd.md'
   workflow_dispatch:
 
 jobs:
@@ -21,17 +21,23 @@ jobs:
 
       - name: Generate Resume
         run: |
-          for jd in $(git diff --name-only HEAD~1 HEAD | grep 'run/.*/inputs/jd.md' || true); do
+          for jd in $(git diff --name-only HEAD~1 HEAD | grep 'runs/.*/inputs/jd.md' || true); do
             if [ -f "$jd" ]; then
               python scripts/generate_resume_from_jd.py "$jd" > result.json
             fi
           done
 
+      - name: Upload resume artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: resumes
+          path: runs/**/outputs/*.docx
+
       - name: Commit Outputs
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
-          git add run/**/outputs/*.docx
+          git add runs/**/outputs/*.docx
           git commit -m "Add generated resumes" || echo "No changes"
           git push
 
