@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 from docx import Document
 from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
 
 try:
     import openai
@@ -86,15 +85,16 @@ def embed_bullets(doc, job_title, company_name):
     """
     Insert tailored bullets under each role heading,
     before the next role heading or Education section.
-    Returns dict: {role: {"mode": "...", "bullets": [...]}, ...}
+    Returns dict: {role: {"mode": "...", "bullets": [...], "insert_index": int}, ...}
     """
     results = {}
 
     for role in ROLE_HEADINGS:
         role_para = None
-        for para in doc.paragraphs:
+        for i, para in enumerate(doc.paragraphs):
             if role in para.text:
                 role_para = para
+                role_index = i
                 break
 
         if not role_para:
@@ -103,22 +103,29 @@ def embed_bullets(doc, job_title, company_name):
 
         # Find where to insert bullets (after last existing bullet for this role)
         insert_after = role_para
-        for para in doc.paragraphs[doc.paragraphs.index(role_para) + 1:]:
+        for para in doc.paragraphs[role_index + 1:]:
             if any(r in para.text for r in ROLE_HEADINGS if r != role) or "Education & Certifications" in para.text:
                 break
             if para.style and para.style.name.startswith("List Bullet"):
                 insert_after = para
 
-        # Generate bullets
         bullets, mode = generate_bullets_for_role(role, job_title, company_name)
-        results[role] = {"mode": mode, "bullets": bullets}
+
+        # Capture the insertion index for debugging
+        insert_idx = doc.paragraphs.index(insert_after)
+
+        results[role] = {
+            "mode": mode,
+            "bullets": bullets,
+            "insert_index": insert_idx
+        }
 
         # Insert bullets immediately after insert_after
         for bullet in bullets:
             insert_paragraph_after(insert_after, bullet, style="List Bullet")
             insert_after = doc.paragraphs[-1]
 
-        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode})")
+        print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) at paragraph {insert_idx}")
 
     return results
 
