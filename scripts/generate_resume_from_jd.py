@@ -40,11 +40,10 @@ def generate_bullets_for_role(role_title, job_title, company_name):
     Generate tailored bullets for a given role using OpenAI if available.
     Fallback: safe highlight bullet.
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    if not os.environ.get("OPENAI_API_KEY"):
         return [f"Highlighted achievements from {role_title}."], "fallback"
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI()  # reads key from OPENAI_API_KEY env
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
