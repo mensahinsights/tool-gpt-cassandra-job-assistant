@@ -49,7 +49,7 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
-          git add runs/**/outputs/*.docx || true
+          git add runs/**/outputs/*.docx runs/**/outputs/result.json || true
           git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
           git push || echo "[DEBUG] Nothing new to push"
 
@@ -58,8 +58,14 @@ jobs:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
-          echo "[DEBUG] Updating Google Sheet with result.json..."
-          python scripts/update_sheet.py result.json
+          echo "[DEBUG] Looking for result.json..."
+          RESULT_FILE=$(find runs -type f -name "result.json" | sort | tail -n 1)
+          if [ -z "$RESULT_FILE" ]; then
+            echo "[ERROR] No result.json found!"
+            exit 1
+          fi
+          echo "[DEBUG] Using result.json at: $RESULT_FILE"
+          python scripts/update_sheet.py "$RESULT_FILE"
 
       - name: Debug env vars
         run: |
