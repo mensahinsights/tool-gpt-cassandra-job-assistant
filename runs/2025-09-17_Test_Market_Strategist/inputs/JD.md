@@ -1,10 +1,10 @@
-Company: Test Company
-Job Title: Market Insights Strategist
+Company: Lact Test
+Job Title: Market Insights Analyst
 Closing Date: 
 URL: https://www.linkedin.com/jobs/view/4298682831/
 ---
 
-# Job Descriptions
+# Job Description
 
 Job Title: Market Insights Analyst Test
 
