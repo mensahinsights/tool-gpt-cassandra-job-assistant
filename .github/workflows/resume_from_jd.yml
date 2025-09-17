@@ -14,6 +14,13 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Check for resume template
+        run: |
+          if [ ! -f "templates/resume_template.docx" ]; then
+            echo "[ERROR] Missing templates/resume_template.docx"
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:

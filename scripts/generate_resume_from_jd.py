@@ -8,8 +8,8 @@ try:
 except ImportError:
     openai = None
 
-
-TEMPLATE_PATH = Path("resume_template.docx")
+# Correct path to the template
+TEMPLATE_PATH = Path("templates/resume_template.docx")
 
 
 def parse_jd(jd_path):
