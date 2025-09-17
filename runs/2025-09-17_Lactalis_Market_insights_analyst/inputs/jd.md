@@ -1,7 +1,7 @@
 Company: Lactalis
 Job Title: Market Insights Analyst
 Closing Date: 
-
+URL: https://www.linkedin.com/jobs/view/4298682831/
 ---
 
 
