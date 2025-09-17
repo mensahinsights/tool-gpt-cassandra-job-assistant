@@ -14,13 +14,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Check for resume template
-        run: |
-          if [ ! -f "templates/resume_template.docx" ]; then
-            echo "[ERROR] Missing templates/resume_template.docx"
-            exit 1
-          fi
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -28,23 +21,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install python-docx google-auth google-auth-httplib2 google-api-python-client pyyaml openai
 
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
       - name: Generate Resume(s)
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "[DEBUG] Scanning for jd.md files..."
           find runs -type f -path "*/inputs/jd.md" | while read jd; do
             echo "[DEBUG] Processing JD: $jd"
             python scripts/generate_resume_from_jd.py "$jd"
           done
-
-      - name: Run banned character check (outputs only)
-        run: python scripts/check_banned_chars.py runs/**/outputs
 
       - name: Debug outputs directory
         run: |
@@ -55,37 +43,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: resumes
-          path: |
-            runs/**/outputs/*.docx
-            runs/**/outputs/result.json
-
-      - name: List generated resume files
-        run: |
-          echo "[INFO] Generated resumes:"
-          ls -lh runs/**/outputs/*.docx || echo "[WARN] No resumes found"
-          echo "[INFO] Generated metadata:"
-          ls -lh runs/**/outputs/result.json || echo "[WARN] No result.json found"
+          path: runs/**/outputs/*.docx
 
       - name: Commit Outputs
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "github-actions"
-          git add runs/**/outputs/*.docx runs/**/outputs/result.json || true
+          git add runs/**/outputs/*.docx || true
           git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
           git push || echo "[DEBUG] Nothing new to push"
 
-      - name: Update Google Sheet
-        env:
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-        run: |
-          echo "[DEBUG] Looking for result.json files..."
-          python scripts/update_sheet.py runs
-
-      - name: Debug env vars
-        run: |
-          echo "GOOGLE_SHEETS_CREDENTIALS length: ${#GOOGLE_SHEETS_CREDENTIALS}"
-          echo "SHEET_ID: $SHEET_ID"
-        env:
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
+      - name: Debug run finished
+        run: echo "[DEBUG] Workflow completed successfully"

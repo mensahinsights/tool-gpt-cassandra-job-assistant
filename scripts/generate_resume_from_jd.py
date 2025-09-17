@@ -81,26 +81,19 @@ def safe_openai_request(role_title, job_title, company_name):
     return []
 
 
-def normalize_bullets(openai_bullets, baseline_bullets, role_title):
+def normalize_bullets(openai_bullets, baseline_bullets):
     bullets, mode = [], "baseline"
 
-    if openai_bullets:
+    if openai_bullets and MIN_BULLETS <= len(openai_bullets) <= MAX_BULLETS:
         bullets = openai_bullets
         mode = "openai"
-
-    if not bullets and baseline_bullets:
-        bullets = baseline_bullets.copy()
+    elif baseline_bullets:
+        bullets = baseline_bullets[:MAX_BULLETS]
+        if len(bullets) < MIN_BULLETS:
+            bullets = (bullets * ((MIN_BULLETS // len(bullets)) + 1))[:MIN_BULLETS]
         mode = "baseline"
-
-    if 0 < len(bullets) < MIN_BULLETS and baseline_bullets:
-        while len(bullets) < MIN_BULLETS:
-            bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
-
-    if len(bullets) > MAX_BULLETS:
-        bullets = bullets[:MAX_BULLETS]
-
-    if not bullets:
-        bullets = ["Highlights available upon request."]
+    else:
+        bullets = ["Highlights available upon request."] * MIN_BULLETS
         mode = "fallback"
 
     return bullets, mode
@@ -135,7 +128,7 @@ def embed_bullets(doc, job_title, company_name, baselines):
         date_para = doc.paragraphs[role_idx + 1]
 
         openai_bullets = safe_openai_request(role, job_title, company_name)
-        bullets, mode = normalize_bullets(openai_bullets, baselines.get(role, []), role)
+        bullets, mode = normalize_bullets(openai_bullets, baselines.get(role, []))
 
         results[role] = {"mode": mode, "count": len(bullets)}
 
@@ -185,7 +178,6 @@ def main(jd_path):
         "closing_date": closing_date,
         "jd_path": str(jd_path),
         "jd_url": jd_url,
-        "dummy_score": 85,
         "resume_file": os.path.basename(str(out_file)),
         "roles": role_data,
     }
