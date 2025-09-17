@@ -1,13 +1,13 @@
 import os
+import sys
 import json
 from pathlib import Path
 from docx import Document
-from docx.oxml import OxmlElement
 from docx.shared import Pt
 from openai import OpenAI
 
 # Paths
-TEMPLATE_PATH = Path("templates/resume_template.docx")
+TEMPLATE_PATH = Path("templates/resume_template_cleaned.docx")
 BASELINES_PATH = Path("scripts/baselines.json")
 
 # Roles expected in the template
@@ -18,8 +18,8 @@ ROLE_HEADINGS = [
 ]
 
 # Bullet count rules
-MIN_BULLETS_PER_ROLE = 4
-MAX_BULLETS_PER_ROLE = 6
+MIN_BULLETS = 4
+MAX_BULLETS = 6
 
 
 def load_baselines():
@@ -52,21 +52,21 @@ def parse_jd(jd_path):
 def generate_bullets_for_role(role_title, job_title, company_name, baselines):
     """
     Generate tailored bullets using OpenAI if available.
-    Always enforce 4–6 bullets, padded with baselines as needed.
+    Always enforce 4–6 bullets, padded with baselines if needed.
     """
-    bullets = []
-    mode = "baseline"
+    bullets, mode = [], "baseline"
 
+    # Try OpenAI
     if os.environ.get("OPENAI_API_KEY"):
         try:
-            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert resume writer."},
                     {"role": "user", "content": (
                         f"Given the past role '{role_title}' and the target role '{job_title}' at {company_name}, "
-                        "generate 4 to 6 resume bullet points showing alignment. "
+                        "generate 4–6 resume bullet points showing alignment. "
                         "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
                         "Return only bullet points."
                     )}
@@ -83,22 +83,21 @@ def generate_bullets_for_role(role_title, job_title, company_name, baselines):
 
     baseline_bullets = baselines.get(role_title, [])
 
-    # If OpenAI gave nothing → use full baseline list
+    # Normalize bullets
     if not bullets and baseline_bullets:
         bullets = baseline_bullets.copy()
         mode = "baseline"
 
-    # Pad until minimum
-    while len(bullets) < MIN_BULLETS_PER_ROLE and baseline_bullets:
-        bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
+    if 0 < len(bullets) < MIN_BULLETS and baseline_bullets:
+        # Pad with baselines until minimum
+        while len(bullets) < MIN_BULLETS:
+            bullets.append(baseline_bullets[len(bullets) % len(baseline_bullets)])
 
-    # If still empty → placeholder
+    if len(bullets) > MAX_BULLETS:
+        bullets = bullets[:MAX_BULLETS]
+
     if not bullets:
-        bullets = [f"Key achievements from {role_title}."]
-
-    # Cap at max
-    if len(bullets) > MAX_BULLETS_PER_ROLE:
-        bullets = bullets[:MAX_BULLETS_PER_ROLE]
+        bullets = ["Key achievements available upon request."]  # fallback of last resort
 
     return bullets, mode
 
@@ -117,19 +116,8 @@ def clear_role_bullets(doc, role_idx):
         p._element.getparent().remove(p._element)
 
 
-def insert_bullet_after(para, text):
-    """Insert a bullet paragraph immediately after a given paragraph without gaps."""
-    new_p = OxmlElement("w:p")
-    para._element.addnext(new_p)
-    new_para = para._parent.add_paragraph(text, style="List Bullet")
-    new_para.paragraph_format.space_after = Pt(0)
-    new_para.paragraph_format.space_before = Pt(0)
-    new_p.addnext(new_para._element)
-    return new_para
-
-
 def embed_bullets(doc, job_title, company_name, baselines):
-    """Replace role bullets with tailored ones, ensuring bullets are single-spaced."""
+    """Replace role bullets with tailored ones, ensuring single spacing."""
     results = {}
     for role in ROLE_HEADINGS:
         role_idx = None
@@ -143,15 +131,17 @@ def embed_bullets(doc, job_title, company_name, baselines):
 
         clear_role_bullets(doc, role_idx)
 
-        date_idx = role_idx + 1
-        para = doc.paragraphs[date_idx]
-
+        date_para = doc.paragraphs[role_idx + 1]
         bullets, mode = generate_bullets_for_role(role, job_title, company_name, baselines)
 
-        results[role] = {"mode": mode, "bullets": bullets, "insert_index": date_idx}
+        results[role] = {"mode": mode, "count": len(bullets)}
 
+        insert_after = date_para
         for b in bullets:
-            para = insert_bullet_after(para, b)
+            new_para = insert_after.insert_paragraph_before(b, style="List Bullet")
+            new_para.paragraph_format.space_after = Pt(0)
+            new_para.paragraph_format.space_before = Pt(0)
+            insert_after = new_para
 
         print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode})")
 
@@ -192,7 +182,7 @@ def main(jd_path):
         "closing_date": closing_date,
         "jd_path": str(jd_path),
         "jd_url": jd_url,
-        "ats_score": 85,
+        "dummy_score": 85,
         "resume_file": os.path.basename(str(out_file)),
         "roles": role_data,
     }
@@ -206,7 +196,6 @@ def main(jd_path):
 
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) < 2:
         print("Usage: python generate_resume_from_jd.py <jd_path>")
         sys.exit(1)
