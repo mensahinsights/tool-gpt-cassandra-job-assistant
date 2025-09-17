@@ -15,6 +15,10 @@ ROLE_HEADINGS = [
     "IT Analyst | MPAC"
 ]
 
+# Bullet count rules based on recruiter best practices
+MIN_BULLETS_PER_ROLE = 4
+MAX_BULLETS_PER_ROLE = 6
+
 
 def parse_jd(jd_path):
     """Extract Company, Job Title, Closing Date, and URL from jd.md"""
@@ -38,35 +42,48 @@ def parse_jd(jd_path):
 def generate_bullets_for_role(role_title, job_title, company_name):
     """
     Generate tailored bullets for a given role using OpenAI if available.
-    Fallback: safe highlight bullet.
+    Enforce min (4) and max (6) bullets. Use fallback to fill gaps.
     """
-    if not os.environ.get("OPENAI_API_KEY"):
-        return [f"Highlighted achievements from {role_title}."], "fallback"
+    bullets = []
+    mode = "fallback"
 
-    try:
-        client = OpenAI()  # reads key from OPENAI_API_KEY
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert resume writer."},
-                {"role": "user", "content": (
-                    f"Given the past role '{role_title}' and the target role '{job_title}' at {company_name}, "
-                    "generate up to 3 resume bullet points showing alignment. "
-                    "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
-                    "Return only bullet points."
-                )}
-            ],
-            timeout=30  # prevent hangs
-        )
-        content = response.choices[0].message.content
-        bullets = content.split("\n")
-        clean_bullets = [b.strip("-• ") for b in bullets if b.strip()]
-        if not clean_bullets:
-            return [f"Highlighted achievements from {role_title}."], "fallback"
-        return clean_bullets, "openai"
-    except Exception as e:
-        print(f"[WARN] OpenAI request failed for {role_title}: {e}")
-        return [f"Highlighted achievements from {role_title}."], "fallback"
+    if os.environ.get("OPENAI_API_KEY"):
+        try:
+            client = OpenAI()  # reads key from OPENAI_API_KEY
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert resume writer."},
+                    {"role": "user", "content": (
+                        f"Given the past role '{role_title}' and the target role '{job_title}' at {company_name}, "
+                        "generate 4 to 6 resume bullet points showing alignment. "
+                        "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
+                        "Return only bullet points."
+                    )}
+                ],
+                timeout=30
+            )
+            content = resp.choices[0].message.content
+            candidate = [b.strip("-• ") for b in content.split("\n") if b.strip()]
+            if candidate:
+                mode = "openai"
+                bullets = candidate
+        except Exception as e:
+            print(f"[WARN] OpenAI request failed for {role_title}: {e}")
+
+    # If no usable bullets, fallback
+    if not bullets:
+        bullets = [f"Highlighted achievements from {role_title}."]
+
+    # Enforce min (pad with fallback)
+    while len(bullets) < MIN_BULLETS_PER_ROLE:
+        bullets.append(f"Additional highlight from {role_title}.")
+
+    # Enforce max (truncate)
+    if len(bullets) > MAX_BULLETS_PER_ROLE:
+        bullets = bullets[:MAX_BULLETS_PER_ROLE]
+
+    return bullets, mode
 
 
 def insert_paragraph(doc, index, text, style=None):
@@ -81,8 +98,8 @@ def insert_paragraph(doc, index, text, style=None):
 
 def embed_bullets(doc, job_title, company_name):
     """
-    Insert tailored bullets under each role heading,
-    before the next role heading or Education section.
+    Insert 4–6 tailored bullets under each role heading,
+    before next role or Education.
     Returns dict: {role: {"mode": "...", "bullets": [...], "insert_index": int}, ...}
     """
     results = {}
@@ -98,10 +115,8 @@ def embed_bullets(doc, job_title, company_name):
             print(f"[WARN] Role heading '{role}' not found.")
             continue
 
-        # Default insertion point is right after the heading
+        # Find insertion point after last bullet in this role
         insert_idx = role_idx
-
-        # Walk forward to find last bullet before next section
         for j in range(role_idx + 1, len(doc.paragraphs)):
             text = doc.paragraphs[j].text
             if any(r in text for r in ROLE_HEADINGS if r != role) or "Education & Certifications" in text:
@@ -118,8 +133,8 @@ def embed_bullets(doc, job_title, company_name):
         }
 
         # Insert bullets one by one after insert_idx
-        for bullet in bullets:
-            insert_paragraph(doc, insert_idx, bullet, style="List Bullet")
+        for b in bullets:
+            insert_paragraph(doc, insert_idx, b, style="List Bullet")
             insert_idx += 1
 
         print(f"[INFO] Inserted {len(bullets)} bullets for {role} ({mode}) at paragraph {insert_idx}")
