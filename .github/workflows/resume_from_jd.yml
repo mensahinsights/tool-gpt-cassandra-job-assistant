@@ -1,0 +1,43 @@
+name: Generate Resume from JD
+
+on:
+  push:
+    paths:
+      - 'run/**/inputs/jd.md'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - run: |
+          pip install python-docx google-auth google-auth-httplib2 google-api-python-client pyyaml
+
+      - name: Generate Resume
+        run: |
+          for jd in $(git diff --name-only HEAD~1 HEAD | grep 'run/.*/inputs/jd.md' || true); do
+            if [ -f "$jd" ]; then
+              python scripts/generate_resume_from_jd.py "$jd" > result.json
+            fi
+          done
+
+      - name: Commit Outputs
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions"
+          git add run/**/outputs/*.docx
+          git commit -m "Add generated resumes" || echo "No changes"
+          git push
+
+      - name: Update Google Sheet
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: |
+          python scripts/update_sheet.py result.json

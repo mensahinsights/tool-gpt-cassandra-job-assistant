@@ -1,0 +1,107 @@
+{
+  "header": {
+    "name": "Gamal Mensah",
+    "city": "Toronto, ON",
+    "email": "gmensah.analytics@gmail.com",
+    "links": [
+      "linkedin.com/in/gamalmensah",
+      "mensahinsights.github.io/portfolio"
+    ]
+  },
+  "headline": "Data Analyst | Strategic Insight & Automation | SQL • Power BI • Python",
+  "summary": "Strategic analyst with 10+ years of experience using SQL, Power BI, Python, and automation to deliver insights and improve operations. Proven record raising compliance, reducing reporting time, and driving adoption of BI tools. Skilled at financial data interpretation, stakeholder communication, and building executive-ready dashboards.",
+  "core_skills": [
+    "SQL",
+    "Power BI",
+    "Python (Pandas, NumPy)",
+    "Tableau",
+    "Excel (Pivot Tables, VBA, Power Query)",
+    "UiPath RPA",
+    "Financial Forecasting",
+    "Root Cause Analysis",
+    "Stakeholder Engagement",
+    "Agile Delivery",
+    "KPI Automation",
+    "SAS"
+  ],
+  "experience": [
+    {
+      "title": "Independent Data Analyst | BI & Automation Consultant",
+      "company": "Self-Employed",
+      "location": "Greater Toronto Area, Canada",
+      "start_date": "Jan 2025",
+      "end_date": "Present",
+      "impact": "Delivering analytics and automation consulting across finance and operations.",
+      "bullets": [
+        "Built SQL pipelines and Python scripts to reduce reporting delays and improve dashboard reliability.",
+        "Developed executive-ready Power BI dashboards to guide financial decision-making across departments.",
+        "Automated recurring reports with Power Query-enhanced Excel and UiPath bots, saving hours weekly.",
+        "Partnered with business leaders to translate pain points into visual and actionable insights."
+      ]
+    },
+    {
+      "title": "Senior Transformation Analyst",
+      "company": "PepsiCo",
+      "location": "Mississauga, ON",
+      "start_date": "Mar 2020",
+      "end_date": "Jan 2025",
+      "impact": "Led analytics and automation initiatives that improved compliance, forecasting, and reporting efficiency.",
+      "bullets": [
+        "Raised ordering compliance from 69 percent to 95 percent across 197 stores by driving stakeholder adoption.",
+        "Automated over 10 hours weekly of audit reporting with UiPath and Excel VBA workflows.",
+        "Created Tableau dashboards that improved visibility on root cause drivers behind margin loss and inventory gaps.",
+        "Delivered forecasting tools and compliance validation metrics used across finance and sales.",
+        "Supported RPA rollouts with SOPs and training that aligned technical output with business needs."
+      ]
+    },
+    {
+      "title": "IT R&D Analyst | Property & Revenue Forecasting",
+      "company": "Municipal Property Assessment Corporation (MPAC)",
+      "location": "Pickering, ON",
+      "start_date": "Aug 2003",
+      "end_date": "Mar 2020",
+      "impact": "Developed reporting and predictive models to strengthen revenue forecasting and data delivery.",
+      "bullets": [
+        "Delivered over 300 custom reports annually using SAS and SQL for financial stakeholders.",
+        "Built predictive models and root cause investigations to improve revenue forecasting accuracy.",
+        "Designed B2B XML schemas and automated data pipelines to minimise manual errors and SLA breaches.",
+        "Mentored junior analysts and led Agile data portal redesigns for stakeholder integration."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Data Science Certification",
+      "field": "Python, Machine Learning, Forecasting",
+      "institution": "BrainStation"
+    },
+    {
+      "degree": "Certification",
+      "field": "UiPath RPA Developer Foundation"
+    },
+    {
+      "degree": "Certification",
+      "field": "SAS Certified Base Programmer"
+    },
+    {
+      "degree": "BA",
+      "field": "Economics",
+      "institution": "Dalhousie University"
+    },
+    {
+      "degree": "Certificate",
+      "field": "Project Management",
+      "institution": "University of Waterloo"
+    },
+    {
+      "degree": "Diploma",
+      "field": "Applied IT",
+      "institution": "ITI Halifax"
+    },
+    {
+      "degree": "Certificate",
+      "field": "Business Administration",
+      "institution": "Toronto Metropolitan University"
+    }
+  ]
+}

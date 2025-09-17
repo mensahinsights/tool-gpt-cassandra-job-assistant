@@ -1,0 +1,2 @@
+This is a placeholder for resume_template.docx.
+Please create a Word file with placeholders like {{Company}}, {{Job_Title}}, {{Closing_Date}}, {{ATS_Score}}, {{Summary}}, {{Core_Skills}}, {{Experience}}.

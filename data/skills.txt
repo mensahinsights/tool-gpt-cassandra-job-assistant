@@ -1,0 +1,10 @@
+SQL
+Power BI
+Python
+SAS
+UiPath
+Data Analytics
+Business Intelligence
+RPA
+Process Automation
+Data Visualization
