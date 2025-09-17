@@ -1,6 +1,7 @@
 Company: Landmark Group
 Job Title: Product Analyst
 Closing Date: 2025-09-29
+URL: https://www.linkedin.com/jobs/view/4298682831/
 
 ---
 
