@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys, pathlib
 
-BAN = ["—"]  # em dash
+BAN = ["\u2014"]  # em dash
 
 def scan(path: pathlib.Path) -> int:
     bad = 0

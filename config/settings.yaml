@@ -1,7 +1,7 @@
 # config/settings.yaml
 language: British-English-ize
 ban_characters:
-  - "—"
+  - "\u2014"
 ats:
   coverage_target_percent: 75
   require_in_summary: true
