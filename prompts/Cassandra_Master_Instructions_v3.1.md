@@ -55,6 +55,13 @@ Position the candidate as a strategic analyst who uses data to change business o
 - Example bullet shape, Verb, Method, Context, Metric, Business outcome.  
 **Projects or Selected Work** optional, one or two items if directly relevant.  
 **Education and certs** concise, no fluff.
+**When generating resumes**
+- Preserve the full template structure (header, summary, skills, education, certifications).
+- For each role in Professional Experience:
+  - Generate tailored bullets using the JD context.
+  - If no JD-relevant tailoring is possible, highlight key contributions already in the template (do not invent new responsibilities).
+- Do not output ATS scores inside resumes; keep those only in result.json.
+
 
 ## 8) Bullet templates you can reuse
 - Increased [metric] by [X percent or value] by [method], which [business outcome].  

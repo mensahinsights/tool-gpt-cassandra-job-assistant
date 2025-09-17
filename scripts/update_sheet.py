@@ -18,14 +18,14 @@ def update_google_sheet(results, sheet_id):
 
     service = build("sheets", "v4", credentials=creds)
 
-    # Read existing rows (Company, Job Title, JD Path used for dedupe)
+    # Read existing rows
     existing = service.spreadsheets().values().get(
         spreadsheetId=sheet_id,
-        range="Sheet1!A:F"
+        range="Sheet1!A:G"
     ).execute().get("values", [])
 
     existing_keys = set()
-    for row in existing[1:]:  # skip header row
+    for row in existing[1:]:  # skip header
         if len(row) >= 4:
             key = (row[1], row[2], row[3])  # Company, Job Title, JD Path
             existing_keys.add(key)
@@ -41,11 +41,12 @@ def update_google_sheet(results, sheet_id):
             continue
 
         row = [
-            datetime.now().strftime("%Y-%m-%d"),   # Date of run
+            datetime.now().strftime("%Y-%m-%d"),   # Date
             result.get("company", ""),
             result.get("job_title", ""),
             result.get("jd_path", ""),
             result.get("closing_date", "TBD Closing Date"),
+            result.get("jd_url", ""),
             result.get("ats_score", "")
         ]
         values.append(row)
@@ -54,14 +55,13 @@ def update_google_sheet(results, sheet_id):
         body = {"values": values}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:F",
+            range="Sheet1!A:G",
             valueInputOption="RAW",
             body=body
         ).execute()
         print(f"[INFO] Appended {len(values)} new rows to Google Sheet")
     else:
         print("[INFO] No new rows to append (all duplicates)")
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

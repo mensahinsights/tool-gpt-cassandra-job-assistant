@@ -8,15 +8,17 @@ try:
 except ImportError:
     openai = None
 
-# Path to the committed resume template
 TEMPLATE_PATH = Path("templates/resume_template.docx")
 
+ROLE_HEADINGS = [
+    "Independent Data Analyst | BI & Automation Consultant",
+    "Senior Transformation Analyst | PepsiCo",
+    "IT Analyst | MPAC"
+]
 
 def parse_jd(jd_path):
-    """Extract company, job title, and closing date from jd.md"""
-    company = None
-    job_title = None
-    closing_date = "TBD Closing Date"
+    company, job_title = None, None
+    closing_date, jd_url = "TBD Closing Date", ""
     with open(jd_path, "r", encoding="utf-8") as f:
         for line in f:
             if line.lower().startswith("company:"):
@@ -27,19 +29,14 @@ def parse_jd(jd_path):
                 value = line.split(":", 1)[1].strip()
                 if value:
                     closing_date = value
-    return company, job_title, closing_date
+            elif line.lower().startswith("url:"):
+                jd_url = line.split(":", 1)[1].strip()
+    return company, job_title, closing_date, jd_url
 
-
-def generate_bullet_points(job_title, company_name):
-    """Generate tailored bullet points using OpenAI if key is set, otherwise fallback"""
+def generate_bullets_for_role(role_title, job_title, company_name):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key or not openai:
-        print("[WARN] OpenAI not available, using static fallback bullets.")
-        return [
-            "Delivered measurable improvements to data reporting accuracy.",
-            "Partnered with business teams to define KPIs and reporting standards.",
-            "Implemented dashboards that reduced analysis time by 50%."
-        ], "fallback"
+        return [f"Highlighted achievements from {role_title}."], "fallback"
 
     openai.api_key = api_key
     try:
@@ -47,58 +44,48 @@ def generate_bullet_points(job_title, company_name):
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an expert resume writer."},
-                {"role": "user", "content": f"Generate 3 strong resume bullet points tailored for a {job_title} role at {company_name}. Focus on measurable business impact, analytics, and problem-solving. Return only bullet points."}
+                {"role": "user", "content": (
+                    f"Given the past role '{role_title}' and the target role '{job_title}' at {company_name}, "
+                    "generate up to 3 resume bullet points showing alignment. "
+                    "If no JD-relevance exists, return highlights from the role without inventing new responsibilities. "
+                    "Return only bullet points."
+                )}
             ]
         )
         bullets = response.choices[0].message["content"].split("\n")
         clean_bullets = [b.strip("-• ") for b in bullets if b.strip()]
+        if not clean_bullets:
+            return [f"Highlighted achievements from {role_title}."], "fallback"
         return clean_bullets, "openai"
     except Exception as e:
-        print(f"[WARN] OpenAI request failed: {e}")
-        return [
-            "Delivered measurable improvements to data reporting accuracy.",
-            "Partnered with business teams to define KPIs and reporting standards.",
-            "Implemented dashboards that reduced analysis time by 50%."
-        ], "fallback"
+        print(f"[WARN] OpenAI request failed for {role_title}: {e}")
+        return [f"Highlighted achievements from {role_title}."], "fallback"
 
+def embed_bullets(doc, job_title, company_name):
+    role_positions = {}
+    for i, para in enumerate(doc.paragraphs):
+        for role in ROLE_HEADINGS:
+            if role in para.text:
+                role_positions[role] = i
 
-def embed_bullets_in_experience(doc, bullets):
-    """
-    Find 'Independent Data Analyst | BI & Automation Consultant' heading
-    and append tailored bullets directly under it.
-    """
-    target_heading = "Independent Data Analyst | BI & Automation Consultant"
-    found = False
-    for para in doc.paragraphs:
-        if target_heading in para.text:
-            found = True
-        elif found and para.style.name.startswith("List Bullet"):
-            continue
-        elif found and para.text.strip() == "":
-            for bullet in bullets:
-                doc.add_paragraph(bullet, style="List Bullet")
-            break
-    if not found:
-        print("[WARN] Target role not found, appending tailored bullets at the end.")
-        doc.add_page_break()
-        doc.add_heading("Tailored Achievements", level=1)
+    results = {}
+    for role, idx in role_positions.items():
+        bullets, mode = generate_bullets_for_role(role, job_title, company_name)
+        results[role] = {"mode": mode, "bullets": bullets}
         for bullet in bullets:
-            doc.add_paragraph(bullet, style="List Bullet")
-
+            p = doc.add_paragraph(bullet, style="List Bullet")
+            doc.paragraphs[-1]._element.addprevious(p._element)
+    return results
 
 def build_resume(company_name, job_title):
-    """Load template and inject tailored bullets"""
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template not found at {TEMPLATE_PATH}")
-
     doc = Document(TEMPLATE_PATH)
-    bullets, mode = generate_bullet_points(job_title, company_name)
-    embed_bullets_in_experience(doc, bullets)
-    return doc, mode, bullets
-
+    role_data = embed_bullets(doc, job_title, company_name)
+    return doc, role_data
 
 def main(jd_path):
-    company_name, job_title, closing_date = parse_jd(jd_path)
+    company_name, job_title, closing_date, jd_url = parse_jd(jd_path)
     if not company_name:
         raise ValueError(f"No company found in {jd_path}")
 
@@ -113,19 +100,18 @@ def main(jd_path):
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
     out_file = outputs_dir / f"Gamal_Mensah_Resume_{company_clean}.docx"
-    resume, mode, bullets = build_resume(company_name, job_title)
+    resume, role_data = build_resume(company_name, job_title)
     resume.save(out_file)
 
-    ats_score = 85  # Replace with real scoring logic if needed
     ats_data = {
         "company": company_name,
         "job_title": job_title,
         "closing_date": closing_date,
         "jd_path": str(jd_path),
-        "ats_score": ats_score,
+        "jd_url": jd_url,
+        "ats_score": 85,
         "resume_file": os.path.basename(str(out_file)),
-        "bullet_mode": mode,
-        "bullets": bullets
+        "roles": role_data
     }
 
     result_file = outputs_dir / "result.json"
@@ -134,7 +120,6 @@ def main(jd_path):
 
     print(f"[INFO] Resume saved to {out_file}")
     print(f"[INFO] ATS data saved to {result_file}")
-
 
 if __name__ == "__main__":
     import sys
