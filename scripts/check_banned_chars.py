@@ -11,4 +11,4 @@ for file in base_path.rglob("*"):
     if file.is_file():
         text = file.read_text(encoding="utf-8", errors="ignore")
         if "—" in text:  # em dash
-            raise ValueError(f"[ban] {file} contains forbidden character '—'")
+            raise ValueError(f"[ban] {file} contains forbidden character '—\u2014'")

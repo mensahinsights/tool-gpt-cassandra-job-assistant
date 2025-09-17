@@ -1,5 +1,5 @@
-Company: Landmark Group
-Job Title: Product Analyst
+Company: Lactalis
+Job Title: Market Insights Analyst
 Closing Date: 2025-09-29
 
 ---
