@@ -4,7 +4,7 @@ Closing Date:
 URL: https://www.linkedin.com/jobs/view/4298682831/
 ---
 
-# Job Description
+# Job Descriptions
 
 Job Title: Market Insights Analyst Test
 
