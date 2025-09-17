@@ -4,5 +4,5 @@
 *.bak
 .vscode/
 .idea/
-runs/**/outputs/*.docx
-runs/**/outputs/*.pdf
+!runs/**/outputs/*.docx
+!runs/**/outputs/*.pdf
