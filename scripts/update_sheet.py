@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 def find_latest_result_json():
-    """Find the most recently created result.json file."""
+    """Find the most recently created result.json file based on folder date."""
     runs_dir = Path("runs")
     if not runs_dir.exists():
         print("[ERROR] No runs directory found")
@@ -17,9 +17,14 @@ def find_latest_result_json():
         print("[ERROR] No result.json files found")
         return None
     
-    # Sort by modification time, newest first
-    latest_file = max(result_files, key=lambda f: f.stat().st_mtime)
-    print(f"[DEBUG] Found latest result.json: {latest_file}")
+    print(f"[DEBUG] Found {len(result_files)} result.json files:")
+    for f in result_files:
+        print(f"  - {f}")
+    
+    # Sort by folder name (which contains date), newest first
+    # Folder format: YYYY-MM-DD_Company_JobTitle
+    latest_file = max(result_files, key=lambda f: f.parent.parent.name)
+    print(f"[DEBUG] Latest by folder name: {latest_file}")
     return latest_file
 
 def update_sheet(result_json_path: str = None):
