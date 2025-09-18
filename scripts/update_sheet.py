@@ -14,7 +14,10 @@ def update_sheet(result_json_path: str):
 
     try:
         creds_dict = json.loads(creds_json)
-        creds = Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+        creds = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
         service = build("sheets", "v4", credentials=creds)
 
         with open(result_json_path, "r", encoding="utf-8") as f:
@@ -29,20 +32,16 @@ def update_sheet(result_json_path: str):
             json.dumps(result.get("roles_processed", {}))
         ]
 
-        print(f"[DEBUG] Row prepared: {row}")
-        print(f"[DEBUG] Sheet ID: {sheet_id}")
-
-
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="job_tracker!A:F",
+            range="job_tracker!A:F",  # 👈 must match tab name
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
         ).execute()
 
-        print("[DEBUG] Successfully updated Google Sheet")
+        print(f"[DEBUG] Updated Google Sheet with row: {row}")
     except Exception as e:
         print(f"[ERROR] Failed to update Google Sheet: {e}")
 

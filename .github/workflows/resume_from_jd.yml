@@ -20,17 +20,30 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Generate Resume(s)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "[DEBUG] Scanning for jd.md files..."
-          find runs -type f -path "*/inputs/jd.md" | while read jd; do
+          found=0
+          for jd in $(find runs -type f -path "*/inputs/jd.md"); do
+            found=1
             echo "[DEBUG] Processing JD: $jd"
             python scripts/generate_resume_from_jd.py "$jd"
           done
+          if [ $found -eq 0 ]; then
+            echo "[WARN] No jd.md files found under runs/**/inputs/"
+            exit 0
+          fi
+
+      - name: Debug outputs directory
+        run: |
+          echo "[DEBUG] Listing outputs folder contents:"
+          ls -R runs || true
 
       - name: Upload resume artifacts
         uses: actions/upload-artifact@v4
@@ -47,13 +60,13 @@ jobs:
           git push || echo "[DEBUG] Nothing new to push"
 
       - name: Update Google Sheet
+        if: success()   # 👈 ensures Sheets only runs if resume generation succeeded
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
           echo "[DEBUG] Updating Google Sheet..."
-          find runs -type f -path "*/outputs/result.json" | while read result; do
+          for result in $(find runs -type f -path "*/outputs/result.json"); do
             echo "[DEBUG] Sending $result"
             python scripts/update_sheet.py "$result"
           done
-
