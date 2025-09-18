@@ -1,20 +1,8 @@
 {
-  "company": "Landmark Group",
-  "job_title": "Product Analyst",
-  "closing_date": "2025-09-29",
-  "jd_url": "https://www.linkedin.com/jobs/view/4298682831/",
-  "roles_processed": {
-    "Independent Data Analyst | BI & Automation Consultant": {
-      "mode": "Baseline",
-      "bullet_count": 4
-    },
-    "Senior Transformation Analyst | PepsiCo": {
-      "mode": "Baseline",
-      "bullet_count": 4
-    },
-    "IT Analyst | MPAC": {
-      "mode": "Baseline",
-      "bullet_count": 4
-    }
-  }
+  "company": "landmark_group_product_analyst",
+  "job_title": "landmark group product analyst",
+  "jd_path": "runs/2025-09-17_landmark_group_product_analyst/inputs/jd.md",
+  "closing_date": "TBD",
+  "jd_url": "",
+  "roles_processed": {}
 }
