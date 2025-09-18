@@ -119,14 +119,15 @@ def build_resume(jd_path: Path, baselines: dict):
         f.write("\n".join(resume_md))
     print(f"[DEBUG] Wrote resume: {md_file}")
 
-    # Metadata for Sheets
+    # Metadata for Sheets (exact 7 fields)
     result = {
+        "date": datetime.date.today().isoformat(),
         "company": company,
         "job_title": job_title,
         "jd_path": str(jd_path),
         "closing_date": "TBD Closing Date",
         "jd_url": "",
-        "ats_score": "fallback",   # 👈 always included so Sheet stays aligned
+        "ats_score": "fallback",
         "roles_processed": roles_data,
     }
     result_path = out_dir / "result.json"

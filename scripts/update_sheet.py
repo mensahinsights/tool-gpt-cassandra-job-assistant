@@ -1,11 +1,10 @@
 import os
 import json
-import datetime
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 def update_sheet(result_json_path: str):
-    """Append a single row from result.json into the Google Sheet."""
+    """Append exactly 1 row into the Google Sheet, matching header order."""
     creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     sheet_id = os.environ.get("SHEET_ID")
 
@@ -21,28 +20,26 @@ def update_sheet(result_json_path: str):
         )
         service = build("sheets", "v4", credentials=creds)
 
-        # Load the result.json
         with open(result_json_path, "r", encoding="utf-8") as f:
             result = json.load(f)
 
-        # Build row in the correct column order
+        # Build row in exact header order
         row = [
-            datetime.date.today().isoformat(),               # Date
-            result.get("company", "Unknown Company"),        # Company
-            result.get("job_title", "Unknown Role"),         # Job Title
-            result.get("jd_path", ""),                       # JD Path
-            result.get("closing_date", "TBD Closing Date"),  # Closing Date
-            result.get("jd_url", ""),                        # JD URL
-            result.get("ats_score", "fallback")              # ATS Score
+            result.get("date", ""),          # Date
+            result.get("company", ""),       # Company
+            result.get("job_title", ""),     # Job Title
+            result.get("jd_path", ""),       # JD Path
+            result.get("closing_date", ""),  # Closing Date
+            result.get("jd_url", ""),        # JD URL
+            result.get("ats_score", ""),     # ATS Score
         ]
 
-        print(f"[DEBUG] Prepared row (matches header): {row}")
+        print(f"[DEBUG] Prepared row: {row}")
 
-        # Append row into Sheet1
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:G",  # 7 columns
+            range="Sheet1!A:G",  # ✅ exactly 7 columns
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
