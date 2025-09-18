@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import datetime
+import re
 from pathlib import Path
 from openai import OpenAI
 
@@ -12,16 +13,26 @@ def load_baselines():
         return json.load(f)
 
 def sanitize_text(text: str) -> str:
-    """Replace forbidden characters and normalize whitespace."""
-    replacements = {
-        "—": "-",  # em dash
-        "–": "-",  # en dash
-        "“": "\"",
-        "”": "\"",
-        "’": "'",
+    """Replace forbidden characters and normalize whitespace with ASCII-safe approach."""
+    # Character code mappings for better GitHub Actions compatibility
+    char_map = {
+        8212: "-",    # em dash
+        8211: "-",    # en dash
+        8220: '"',    # left double quotation mark
+        8221: '"',    # right double quotation mark
+        8217: "'",    # right single quotation mark
+        8216: "'",    # left single quotation mark
+        8226: "*",    # bullet point
     }
-    for bad, good in replacements.items():
-        text = text.replace(bad, good)
+    
+    # Replace by character codes first
+    for code, replacement in char_map.items():
+        text = text.replace(chr(code), replacement)
+    
+    # Fallback regex for any remaining problematic unicode
+    text = re.sub(r'[^\x00-\x7F]+', '-', text)
+    
+    # Normalize whitespace
     return " ".join(text.split())
 
 def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: str):
@@ -40,7 +51,7 @@ def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: 
             max_tokens=400
         )
         bullets = [
-            sanitize_text(line.strip("•- ").strip())
+            sanitize_text(line.strip("*- ").strip())  # ASCII-safe stripping
             for line in resp.choices[0].message.content.splitlines()
             if line.strip()
         ]
@@ -114,12 +125,15 @@ def build_resume(jd_path: Path, baselines: dict):
         resume_md.append(f"- {sanitize_text(skill)}")
     resume_md.append("")
 
-    # Write outputs
+    # Write outputs with explicit encoding
     out_dir = jd_path.parent.parent / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
     md_file = out_dir / f"Gamal_Mensah_Resume_{company}.md"
-    with open(md_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(resume_md))
+    
+    # Ensure ASCII-safe output for GitHub Actions
+    resume_content = "\n".join(resume_md)
+    with open(md_file, "w", encoding="utf-8", newline="\n") as f:
+        f.write(resume_content)
     print(f"[DEBUG] Wrote resume: {md_file}")
 
     # Metadata for Sheets (EXACT 7 fields, nothing else)
@@ -133,13 +147,13 @@ def build_resume(jd_path: Path, baselines: dict):
         "ats_score": "fallback"
     }
     result_path = out_dir / "result.json"
-    with open(result_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2)
+    with open(result_path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(result, f, indent=2, ensure_ascii=True)  # Force ASCII output
     print(f"[DEBUG] Wrote metadata: {result_path}")
 
     # Marker for workflow
     marker_path = Path(".last_result")
-    with open(marker_path, "w", encoding="utf-8") as marker:
+    with open(marker_path, "w", encoding="utf-8", newline="\n") as marker:
         marker.write(str(result_path))
     print(f"[DEBUG] Wrote marker file: {marker_path} -> {result_path}")
 
