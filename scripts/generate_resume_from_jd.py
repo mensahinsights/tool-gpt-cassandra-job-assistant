@@ -102,7 +102,10 @@ def build_resume(jd_path: Path, baselines: dict):
     
     print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
 
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    print(f"[DEBUG] OpenAI API key present: {bool(api_key)}")
+    print(f"[DEBUG] OpenAI API key length: {len(api_key) if api_key else 0}")
+    
     roles_data = {}
     resume_md = []
 
@@ -124,7 +127,11 @@ def build_resume(jd_path: Path, baselines: dict):
 
     # Experience
     resume_md.append("## Professional Experience")
-    for role, details in baselines.get("experience", {}).items():
+    experience_data = baselines.get("experience", {})
+    print(f"[DEBUG] Found {len(experience_data)} experience roles: {list(experience_data.keys())}")
+    
+    for role, details in experience_data.items():
+        print(f"[DEBUG] Processing role: {role}")
         title = details.get("title", role)
         employer = details.get("employer", "")
         dates = details.get("dates", "")
@@ -134,7 +141,6 @@ def build_resume(jd_path: Path, baselines: dict):
 
         # Generate bullets with better error handling
         bullets = []
-        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
         
         if api_key:
             print(f"[DEBUG] Attempting OpenAI bullet generation for {role}")
