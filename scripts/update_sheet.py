@@ -1,11 +1,12 @@
 import os
 import json
 from pathlib import Path
+from datetime import datetime
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 def find_latest_result_json():
-    """Find the most recently created result.json file based on folder name and file time."""
+    """Find the most recently modified result.json file by actual file time."""
     runs_dir = Path("runs")
     if not runs_dir.exists():
         print("[ERROR] No runs directory found")
@@ -20,18 +21,13 @@ def find_latest_result_json():
     print(f"[DEBUG] Found {len(result_files)} result.json files:")
     for f in result_files:
         folder_name = f.parent.parent.name
-        mtime = f.stat().st_mtime
-        print(f"  - {f} (folder: {folder_name}, mtime: {mtime})")
+        mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"  - {folder_name} (modified: {mtime})")
     
-    # Sort by folder name first (YYYY-MM-DD_*), then by file modification time
-    # This handles multiple folders on same date
-    def sort_key(file_path):
-        folder_name = file_path.parent.parent.name
-        file_mtime = file_path.stat().st_mtime
-        return (folder_name, file_mtime)
-    
-    latest_file = max(result_files, key=sort_key)
-    print(f"[DEBUG] Latest by folder+time: {latest_file}")
+    # Sort by file modification time only - most recent first
+    latest_file = max(result_files, key=lambda f: f.stat().st_mtime)
+    latest_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[DEBUG] Latest by modification time: {latest_file.parent.parent.name} ({latest_mtime})")
     return latest_file
 
 def update_sheet(result_json_path: str = None):
