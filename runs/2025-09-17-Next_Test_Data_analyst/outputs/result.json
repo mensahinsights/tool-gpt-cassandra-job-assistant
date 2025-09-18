@@ -1,0 +1,20 @@
+{
+  "company": "Next TEst",
+  "job_title": "Data Analysts 3",
+  "closing_date": "TBD",
+  "jd_url": "https://www.linkedin.com/jobs/view/4298682831/",
+  "roles_processed": {
+    "Independent Data Analyst | BI & Automation Consultant": {
+      "mode": "Baseline",
+      "bullet_count": 4
+    },
+    "Senior Transformation Analyst | PepsiCo": {
+      "mode": "Baseline",
+      "bullet_count": 4
+    },
+    "IT Analyst | MPAC": {
+      "mode": "Baseline",
+      "bullet_count": 4
+    }
+  }
+}
