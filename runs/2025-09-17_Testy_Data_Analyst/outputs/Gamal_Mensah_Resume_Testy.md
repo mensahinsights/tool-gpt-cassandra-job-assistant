@@ -1,0 +1,36 @@
+# Gamal Mensah Resume
+
+Toronto, ON | [gmensah.analytics@gmail.com](mailto:gmensah.analytics@gmail.com) | Phone: Provided on request | [LinkedIn](https://www.linkedin.com/in/gamalmensah/) | [Portfolio](https://mensahinsights.ca)
+
+## Summary
+Independent Data Analyst with expertise in BI, automation, and advanced analytics. Skilled in SQL, Python, Power BI, and automation tools to drive decision-making and efficiency. Proven ability to deliver insights that improve business performance and reduce manual workload.
+
+## Work Experience
+### Independent Data Analyst | BI & Automation Consultant
+- Delivered custom BI dashboards using Power BI and SQL, enabling stakeholders to cut reporting time by 50%.
+- Built automation solutions with Python and UiPath that saved 10+ hours per week of manual effort.
+- Developed predictive models that improved demand planning accuracy for retail clients.
+- Partnered with executives to translate complex analytics into clear business strategies.
+### Senior Transformation Analyst | PepsiCo
+- Led rollout of Precision Ordering system across Ontario, boosting compliance from 69% to 95%.
+- Automated reporting workflows with Python and VBA, saving over 15 hours of manual work weekly.
+- Analyzed sales and inventory data to optimize stock buffer levels, improving availability and reducing waste.
+- Trained field managers on new BI dashboards, raising adoption and improving decision-making speed.
+### IT Analyst | MPAC
+- Supported delivery of Automated Valuation Models (AVMs) used in property assessment across Ontario.
+- Developed and maintained SQL-based data pipelines for property and tax assessment systems.
+- Collaborated with cross-functional teams to validate data quality and improve model accuracy.
+- Streamlined reporting processes with SAS and Excel, reducing turnaround time for property insights.
+
+## Education
+- Bachelor of Science, University of Toronto, 2015
+- UiPath Certified Professional
+- Power BI Data Analyst Associate
+
+## Skills
+- SQL
+- Python
+- Power BI
+- Automation (UiPath, SAS, VBA, RPA)
+- Data Visualization (Power BI, Tableau)
+- Cloud & Homelab (Proxmox, Docker, Synology)
