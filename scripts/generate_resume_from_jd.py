@@ -4,7 +4,7 @@ import json
 import datetime
 import re
 from pathlib import Path
-from openai import OpenAI
+import openai  # new SDK style
 
 BASELINES_PATH = "baselines.json"
 
@@ -69,14 +69,14 @@ def parse_jd_header(jd_path: Path):
 def generate_tailored_bullets(role: str, job_title: str, company: str):
     """Generate tailored bullets with OpenAI, fallback to baseline if needed."""
     try:
-        client = OpenAI()  # fixed: rely on env var OPENAI_API_KEY
         prompt = (
             f"Generate 4-6 strong resume bullet points for the role '{role}' "
             f"that align with the job title '{job_title}' at {company}. "
             "Each bullet must begin with a strong action verb, be specific, "
             "and highlight measurable impact where possible. Return only the bullets."
         )
-        resp = client.chat.completions.create(
+
+        resp = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400
