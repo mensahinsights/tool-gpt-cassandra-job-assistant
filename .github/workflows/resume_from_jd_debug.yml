@@ -2,12 +2,17 @@ name: Debug Resume Generation
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - debug/**
 
 jobs:
-  generate:
+  debug-resume:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -24,8 +29,27 @@ jobs:
         run: |
           echo "🔍 Checking OpenAI package..."
           python -c "import openai; print('OpenAI version:', openai.__version__); print('OpenAI loaded from:', openai.__file__)"
-          echo "🔍 Searching repo for 'OpenAI(' constructor usage..."
-          grep -R "OpenAI(" . || echo "✅ No constructor found in repo"
+          echo "🔍 Python sys.path:"
+          python -c "import sys; print(sys.path)"
+
+      - name: Search repo for OpenAI and proxies usage
+        run: |
+          echo "🔍 Searching repository for 'OpenAI(' constructor usage..."
+          grep -R "OpenAI(" . || echo "✅ No OpenAI constructor found in repo"
+          echo "🔍 Searching repository for 'proxies='..."
+          grep -R "proxies=" . || echo "✅ No proxies= found in repo"
+
+      - name: Search installed packages for proxies
+        run: |
+          echo "🔍 Searching installed site-packages for 'proxies='..."
+          python - <<'EOF'
+          import site, subprocess, sys
+          for path in site.getsitepackages():
+              try:
+                  subprocess.run(["grep", "-R", "proxies=", path], check=True)
+              except subprocess.CalledProcessError:
+                  print(f"✅ No proxies= found in {path}")
+          EOF
 
       - name: Run resume generation
         env:
