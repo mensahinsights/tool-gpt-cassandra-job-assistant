@@ -10,3 +10,4 @@
 
 ## 2025-09-17
 - Version at Test 40 definitely the best version so far.
+- Several Claude interations to get Google Sheets working properly.
