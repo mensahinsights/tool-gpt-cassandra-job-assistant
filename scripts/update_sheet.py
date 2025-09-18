@@ -39,7 +39,7 @@ def update_sheet(result_json_path: str):
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:G",  # ✅ exactly 7 columns
+            range="Sheet1!A:G",  # exactly 7 columns
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
