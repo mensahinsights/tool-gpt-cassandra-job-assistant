@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Resume generator script that builds a tailored resume from a baseline and job description.
-Dynamic bullets are generated using OpenAI gpt-4o-mini.
+Resume generator script using Anthropic Claude 3.5 Sonnet for dynamic bullet generation.
 """
 
 import os
@@ -10,10 +9,11 @@ import json
 import datetime
 import re
 from pathlib import Path
-import openai  # Official OpenAI Python SDK v1.43.0
+from anthropic import Anthropic  # pip install anthropic==0.39.0
 
 
 BASELINES_PATH = "baselines.json"
+anthropic_client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
 def load_baselines():
@@ -24,23 +24,18 @@ def load_baselines():
 def sanitize_text(text: str) -> str:
     """Replace forbidden characters and normalize text."""
     char_map = {
-        8212: "-",    # em dash → hyphen
-        8211: "-",    # en dash → hyphen
-        8220: '"',    # left double quote
-        8221: '"',    # right double quote
-        8217: "'",    # right single quote
-        8216: "'",    # left single quote
-        8226: "*",    # bullet point
+        8212: "-", 8211: "-", 8220: '"', 8221: '"',
+        8217: "'", 8216: "'", 8226: "*"
     }
     for code, replacement in char_map.items():
         text = text.replace(chr(code), replacement)
-    text = re.sub(r'[^\x00-\x7F]', '', text)   # strip non-ASCII
+    text = re.sub(r'[^\x00-\x7F]', '', text)
     text = re.sub(r'[ \t]+', ' ', text).strip()
     return text
 
 
 def parse_jd_header(jd_path: Path):
-    """Parse structured header from jd.md file."""
+    """Extract metadata from a JD .md file header."""
     try:
         with open(jd_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -57,7 +52,6 @@ def parse_jd_header(jd_path: Path):
                 value = value.strip()
                 if value:
                     data[key] = sanitize_text(value)
-        print(f"[DEBUG] Parsed JD header: {data}")
         return data
     except Exception as e:
         print(f"[WARN] Failed to parse JD header: {e}")
@@ -65,10 +59,7 @@ def parse_jd_header(jd_path: Path):
 
 
 def generate_tailored_bullets(role: str, job_title: str, company: str):
-    """
-    Generate tailored bullets with OpenAI gpt-4o-mini.
-    This is the critical function: no OpenAI() constructor, no proxies.
-    """
+    """Generate tailored resume bullets using Claude 3.5 Sonnet."""
     try:
         prompt = (
             f"Generate 4-6 strong resume bullet points for the role '{role}' "
@@ -76,19 +67,20 @@ def generate_tailored_bullets(role: str, job_title: str, company: str):
             "Each bullet must begin with a strong action verb, be specific, "
             "and highlight measurable impact where possible. Return only the bullets."
         )
-        resp = openai.chat.completions.create(
-            model="gpt-4o-mini",
+        resp = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=400,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=400
         )
+        content = resp.content[0].text
         bullets = [
             sanitize_text(line.strip("*- ").strip())
-            for line in resp.choices[0].message.content.splitlines()
+            for line in content.splitlines()
             if line.strip()
         ]
         return bullets[:6] if bullets else None
     except Exception as e:
-        print(f"[WARN] OpenAI bullet gen failed for {role}: {e}")
+        print(f"[WARN] Claude bullet gen failed for {role}: {e}")
         return None
 
 
@@ -101,10 +93,6 @@ def build_resume(jd_path: Path, baselines: dict):
     job_title = jd_data.get("job_title", company.replace("_", " "))
     jd_url = jd_data.get("url", "")
     closing_date = jd_data.get("closing_date", "")
-
-    print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
-    api_key_present = bool(os.environ.get("OPENAI_API_KEY", "").strip())
-    print(f"[DEBUG] OpenAI API key present: {api_key_present}")
 
     roles_data = {}
     resume_md = []
@@ -139,7 +127,6 @@ def build_resume(jd_path: Path, baselines: dict):
     resume_md.append("## Professional Experience")
     experience_data = baselines.get("experience", {})
     for role, details in experience_data.items():
-        print(f"[DEBUG] Processing role: {role}")
         title = details.get("title", role)
         employer = details.get("employer", "")
         dates = details.get("dates", "")
@@ -147,28 +134,11 @@ def build_resume(jd_path: Path, baselines: dict):
         resume_md.append(f"### {title} | {employer}")
         resume_md.append(f"{dates} | {location}")
 
-        bullets = []
-        if api_key_present:
-            print(f"[DEBUG] Attempting OpenAI bullet generation for {role}")
-            bullets = generate_tailored_bullets(role, job_title, company)
-            if bullets:
-                print(f"[DEBUG] Generated {len(bullets)} OpenAI bullets for {role}")
-            else:
-                print(f"[WARN] OpenAI bullet generation failed for {role}, using fallback")
-        else:
-            print(f"[DEBUG] No OpenAI API key found, using baseline bullets for {role}")
-
+        bullets = generate_tailored_bullets(role, job_title, company)
         if not bullets:
             bullets = details.get("bullets", [])
-            print(f"[DEBUG] Using {len(bullets)} baseline bullets for {role}")
 
-        bullets = [sanitize_text(b) for b in bullets]
-        if len(bullets) < 4:
-            baseline_bullets = details.get("bullets", [])
-            bullets.extend(baseline_bullets)
-            print(f"[DEBUG] Extended to {len(bullets)} total bullets for {role}")
-        bullets = bullets[:6]
-
+        bullets = [sanitize_text(b) for b in bullets][:6]
         for b in bullets:
             resume_md.append(f"- {b}")
         resume_md.append("")
@@ -191,9 +161,8 @@ def build_resume(jd_path: Path, baselines: dict):
     out_dir = jd_path.parent.parent / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
     md_file = out_dir / f"Gamal_Mensah_Resume_{company.replace(' ', '_')}.md"
-    resume_content = "\n".join(resume_md)
     with open(md_file, "w", encoding="utf-8", newline="\n") as f:
-        f.write(resume_content)
+        f.write("\n".join(resume_md))
     print(f"[DEBUG] Wrote resume: {md_file}")
 
     result = {
@@ -205,20 +174,9 @@ def build_resume(jd_path: Path, baselines: dict):
         "jd_url": sanitize_text(jd_url),
         "ats_score": "fallback"
     }
-    result = {k: sanitize_text(str(v)) if isinstance(v, str) else v for k, v in result.items()}
-
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(result, f, indent=2, ensure_ascii=True)
-    print(f"[DEBUG] Wrote metadata: {result_path}")
-    print(f"[DEBUG] Result JSON content: {result}")
-
-    marker_path = Path(".last_result")
-    abs_result_path = result_path.absolute()
-    timestamp = datetime.datetime.now().isoformat()
-    with open(marker_path, "w", encoding="utf-8", newline="\n") as marker:
-        marker.write(f"{abs_result_path}|{timestamp}")
-    print(f"[DEBUG] Wrote marker file: {marker_path} -> {abs_result_path} at {timestamp}")
 
 
 def main(jd_path: str):

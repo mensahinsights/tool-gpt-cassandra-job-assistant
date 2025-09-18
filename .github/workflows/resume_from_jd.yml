@@ -1,93 +1,33 @@
-name: Generate Resume from JD
+name: Resume Generator (Claude)
 
 on:
-  push:
-    paths:
-      - 'runs/**/inputs/jd.md'
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  generate:
+  resume:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # Need at least 2 commits to compare
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install anthropic==0.39.0
 
-      - name: Debug OpenAI version
-        run: |
-          python -c "import openai; print('OpenAI version:', openai.__version__)"
-          grep -m1 -n 'OpenAI' scripts/generate_resume_from_jd.py || echo 'No OpenAI class reference'
-
-      - name: Generate Resume(s)
+      - name: Run resume generation
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          echo "[DEBUG] Finding changed jd.md files in this push..."
-          
-          # Get the list of changed jd.md files from git
-          changed_jds=$(git diff --name-only HEAD~1 HEAD | grep 'runs/.*/inputs/jd\.md$' || true)
-          
-          if [ -z "$changed_jds" ]; then
-            echo "[WARN] No jd.md files changed in this push"
-            # For workflow_dispatch, process all files as fallback
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "[DEBUG] Manual trigger - processing all jd.md files"
-              changed_jds=$(find runs -type f -path "*/inputs/jd.md" | head -1)
-            else
-              exit 0
-            fi
-          fi
-          
-          echo "[DEBUG] Changed JD files:"
-          echo "$changed_jds"
-          
-          # Process each changed JD
-          for jd in $changed_jds; do
-            if [ -f "$jd" ]; then
-              echo "[DEBUG] Processing changed JD: $jd"
-              python scripts/generate_resume_from_jd.py "$jd"
-            else
-              echo "[WARN] File not found: $jd"
-            fi
-          done
-
-      - name: Debug outputs directory
-        run: |
-          echo "[DEBUG] Listing outputs folder contents:"
-          ls -R runs || true
-
-      - name: Upload resume artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: resumes
-          path: runs/**/outputs/*
-
-      - name: Commit Outputs
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "github-actions"
-          git add runs/**/outputs/* || true
-          git commit -m "Add generated resumes" || echo "[DEBUG] No new resumes to commit"
-          git push || echo "[DEBUG] Nothing new to push"
-
-      - name: Update Google Sheet
-        if: success()
-        env:
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-        run: |
-          echo "[DEBUG] Finding and updating with latest result.json"
-          python scripts/update_sheet.py
+          echo "🔍 Running resume generator with Claude..."
+          python scripts/generate_resume_from_jd.py runs/sample/jd.md
