@@ -1,10 +1,11 @@
+#!/usr/bin/env python3
 import os
 import sys
 import json
 import datetime
 import re
 from pathlib import Path
-import openai  # new SDK style, no OpenAI() client object
+import openai  # use the modern SDK
 
 BASELINES_PATH = "baselines.json"
 
@@ -23,14 +24,9 @@ def sanitize_text(text: str) -> str:
         8216: "'",    # left single quote
         8226: "*",    # bullet point
     }
-
     for code, replacement in char_map.items():
         text = text.replace(chr(code), replacement)
-
-    # Remove any remaining non-ASCII chars (safe for GitHub Actions)
-    text = re.sub(r'[^\x00-\x7F]', '', text)
-
-    # Normalize spaces, but keep newlines so Markdown structure isn’t flattened
+    text = re.sub(r'[^\x00-\x7F]', '', text)   # strip non-ASCII
     text = re.sub(r'[ \t]+', ' ', text).strip()
     return text
 
@@ -39,18 +35,11 @@ def parse_jd_header(jd_path: Path):
     try:
         with open(jd_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
-        # Extract header section (between --- delimiters if present)
         if content.startswith("---"):
             parts = content.split("---")
-            if len(parts) > 2:
-                header_section = parts[1].strip()
-            else:
-                header_section = parts[0].strip()
+            header_section = parts[1].strip() if len(parts) > 2 else parts[0].strip()
         else:
             header_section = content.split("---")[0].strip()
-        
-        # Parse key-value pairs
         data = {}
         for line in header_section.split("\n"):
             if ":" in line:
@@ -59,7 +48,6 @@ def parse_jd_header(jd_path: Path):
                 value = value.strip()
                 if value:
                     data[key] = sanitize_text(value)
-        
         print(f"[DEBUG] Parsed JD header: {data}")
         return data
     except Exception as e:
@@ -75,7 +63,6 @@ def generate_tailored_bullets(role: str, job_title: str, company: str):
             "Each bullet must begin with a strong action verb, be specific, "
             "and highlight measurable impact where possible. Return only the bullets."
         )
-
         resp = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -92,22 +79,16 @@ def generate_tailored_bullets(role: str, job_title: str, company: str):
         return None
 
 def build_resume(jd_path: Path, baselines: dict):
-    """Generate resume markdown and result.json metadata."""
-    # Parse header data first
     jd_data = parse_jd_header(jd_path)
-    
-    # Use parsed data, fallback to folder name if needed
     folder_name = jd_path.parent.parent.name
     folder_parts = folder_name.split("_", 1)
     fallback_company = folder_parts[-1] if len(folder_parts) > 1 else folder_name
-    
     company = jd_data.get("company", fallback_company)
     job_title = jd_data.get("job_title", company.replace("_", " "))
     jd_url = jd_data.get("url", "")
     closing_date = jd_data.get("closing_date", "")
-    
-    print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
 
+    print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
     api_key_present = bool(os.environ.get("OPENAI_API_KEY", "").strip())
     print(f"[DEBUG] OpenAI API key present: {api_key_present}")
     if api_key_present:
@@ -124,7 +105,6 @@ def build_resume(jd_path: Path, baselines: dict):
     phone = contact.get("phone", "Phone: Provided on request")
     linkedin = contact.get("linkedin", "")
     portfolio = contact.get("portfolio", "")
-    
     resume_md.append(f"# {name}")
     resume_md.append(f"{location} | {email} | {phone}")
     if linkedin and portfolio:
@@ -147,7 +127,6 @@ def build_resume(jd_path: Path, baselines: dict):
     resume_md.append("## Professional Experience")
     experience_data = baselines.get("experience", {})
     print(f"[DEBUG] Found {len(experience_data)} experience roles: {list(experience_data.keys())}")
-    
     for role, details in experience_data.items():
         print(f"[DEBUG] Processing role: {role}")
         title = details.get("title", role)
@@ -157,9 +136,7 @@ def build_resume(jd_path: Path, baselines: dict):
         resume_md.append(f"### {title} | {employer}")
         resume_md.append(f"{dates} | {location}")
 
-        # Generate bullets with better error handling
         bullets = []
-        
         if api_key_present:
             print(f"[DEBUG] Attempting OpenAI bullet generation for {role}")
             bullets = generate_tailored_bullets(role, job_title, company)
@@ -169,17 +146,16 @@ def build_resume(jd_path: Path, baselines: dict):
                 print(f"[WARN] OpenAI bullet generation failed for {role}, using fallback")
         else:
             print(f"[DEBUG] No OpenAI API key found, using baseline bullets for {role}")
-        
+
         if not bullets:
             bullets = details.get("bullets", [])
             print(f"[DEBUG] Using {len(bullets)} baseline bullets for {role}")
-        
+
         bullets = [sanitize_text(b) for b in bullets]
         if len(bullets) < 4:
             baseline_bullets = details.get("bullets", [])
             bullets.extend(baseline_bullets)
             print(f"[DEBUG] Extended to {len(bullets)} total bullets for {role}")
-        
         bullets = bullets[:6]
 
         for b in bullets:
@@ -204,13 +180,11 @@ def build_resume(jd_path: Path, baselines: dict):
     out_dir = jd_path.parent.parent / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
     md_file = out_dir / f"Gamal_Mensah_Resume_{company.replace(' ', '_')}.md"
-    
     resume_content = "\n".join(resume_md)
     with open(md_file, "w", encoding="utf-8", newline="\n") as f:
         f.write(resume_content)
     print(f"[DEBUG] Wrote resume: {md_file}")
 
-    # Metadata for Sheets (EXACT 7 fields with parsed data)
     result = {
         "date": datetime.date.today().isoformat(),
         "company": sanitize_text(company),
@@ -220,20 +194,17 @@ def build_resume(jd_path: Path, baselines: dict):
         "jd_url": sanitize_text(jd_url),
         "ats_score": "fallback"
     }
-    
     result = {k: sanitize_text(str(v)) if isinstance(v, str) else v for k, v in result.items()}
-    
+
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(result, f, indent=2, ensure_ascii=True)
     print(f"[DEBUG] Wrote metadata: {result_path}")
     print(f"[DEBUG] Result JSON content: {result}")
 
-    # Marker for workflow
     marker_path = Path(".last_result")
     abs_result_path = result_path.absolute()
     timestamp = datetime.datetime.now().isoformat()
-    
     with open(marker_path, "w", encoding="utf-8", newline="\n") as marker:
         marker.write(f"{abs_result_path}|{timestamp}")
     print(f"[DEBUG] Wrote marker file: {marker_path} -> {abs_result_path} at {timestamp}")
