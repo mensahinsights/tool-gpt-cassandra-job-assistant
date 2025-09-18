@@ -111,10 +111,21 @@ def build_resume(jd_path: Path, baselines: dict):
 
     # Contact block
     contact = baselines.get("contact", {})
-    resume_md.append(f"# {contact.get('name', 'Gamal Mensah')}")
-    resume_md.append(f"{contact.get('location', 'Toronto, ON')} | {contact.get('email', '')} | {contact.get('phone', 'Phone on request')}")
-    if contact.get("linkedin"):
-        resume_md.append(f"[LinkedIn]({contact['linkedin']}) | [Portfolio]({contact.get('portfolio', '')})")
+    name = contact.get("name", "Gamal Mensah")
+    location = contact.get("location", "Toronto, ON")
+    email = contact.get("email", "gmensah.analytics@gmail.com")
+    phone = contact.get("phone", "Phone: Provided on request")
+    linkedin = contact.get("linkedin", "")
+    portfolio = contact.get("portfolio", "")
+    
+    resume_md.append(f"# {name}")
+    resume_md.append(f"{location} | {email} | {phone}")
+    if linkedin and portfolio:
+        resume_md.append(f"[LinkedIn]({linkedin}) | [Portfolio]({portfolio})")
+    elif linkedin:
+        resume_md.append(f"[LinkedIn]({linkedin})")
+    elif portfolio:
+        resume_md.append(f"[Portfolio]({portfolio})")
     resume_md.append("")
 
     # Summary
