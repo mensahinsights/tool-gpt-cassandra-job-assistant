@@ -50,14 +50,17 @@ def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: 
         return None
 
 def build_resume(jd_path: Path, baselines: dict):
-    company = jd_path.parent.parent.name.split("_", 1)[-1]
-    job_title = jd_path.parent.parent.name.split("_", 1)[-1].replace("_", " ")
+    """Generate resume markdown and result.json metadata."""
+    folder_name = jd_path.parent.parent.name
+    parts = folder_name.split("_", 1)
+    company = parts[-1] if len(parts) > 1 else folder_name
+    job_title = company.replace("_", " ")
 
     api_key = os.environ.get("OPENAI_API_KEY")
     roles_data = {}
     resume_md = []
 
-    # Contact
+    # Contact block
     contact = baselines.get("contact", {})
     resume_md.append(f"# {contact.get('name', 'Gamal Mensah')}")
     resume_md.append(f"{contact.get('location', 'Toronto, ON')} | {contact.get('email', '')} | {contact.get('phone', 'Phone on request')}")
@@ -119,7 +122,7 @@ def build_resume(jd_path: Path, baselines: dict):
         f.write("\n".join(resume_md))
     print(f"[DEBUG] Wrote resume: {md_file}")
 
-    # Metadata for Sheets (exact 7 fields)
+    # Metadata for Sheets (EXACT 7 fields, nothing else)
     result = {
         "date": datetime.date.today().isoformat(),
         "company": company,
@@ -127,15 +130,14 @@ def build_resume(jd_path: Path, baselines: dict):
         "jd_path": str(jd_path),
         "closing_date": "TBD Closing Date",
         "jd_url": "",
-        "ats_score": "fallback",
-        "roles_processed": roles_data,
+        "ats_score": "fallback"
     }
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
     print(f"[DEBUG] Wrote metadata: {result_path}")
 
-    # Write marker file for workflow
+    # Marker for workflow
     marker_path = Path(".last_result")
     with open(marker_path, "w", encoding="utf-8") as marker:
         marker.write(str(result_path))

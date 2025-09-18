@@ -23,7 +23,7 @@ def update_sheet(result_json_path: str):
         with open(result_json_path, "r", encoding="utf-8") as f:
             result = json.load(f)
 
-        # Build row in exact header order
+        # Strict 7-column row, always in the right order
         row = [
             result.get("date", ""),          # Date
             result.get("company", ""),       # Company
@@ -39,7 +39,7 @@ def update_sheet(result_json_path: str):
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:G",  # exactly 7 columns
+            range="Sheet1!A:G",  # 7 fixed columns
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
