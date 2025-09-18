@@ -77,7 +77,8 @@ def generate_ai_bullets(role: str, job_title: str, company: str, baseline: list)
         print(f"[DEBUG] OpenAI request failed for {role}: {e}")
         return []
 
-def enforce_bullet_count(bullets: list, baseline: list) -> (list, str):
+from typing import List, Tuple
+def enforce_bullet_count(bullets: List[str], baseline: List[str]) -> Tuple[List[str], str]:
     """Guarantee 4-6 bullets. Use baseline or defaults if AI fails."""
     defaults = [
         "Analyzed data to support decision-making.",
@@ -111,56 +112,68 @@ def build_resume(jd_path: Path, baselines: dict):
     resume_filename = f"Gamal_Mensah_Resume_{company.replace(' ', '')}.md"
     resume_path = out_dir / resume_filename
     result_path = out_dir / "result.json"
-    with open(result_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2)
-
 
     sections = []
+    roles_processed = {}   # ✅ always initialized
 
-    if "Contact" in baselines:
-        sections.append(f"# Gamal Mensah Resume\n\n{baselines['Contact']}")
+    try:
+        if "Contact" in baselines:
+            sections.append(f"# Gamal Mensah Resume\n\n{baselines['Contact']}")
 
-    if "Summary" in baselines:
-        summary_text = " ".join([normalize_text(s) for s in baselines["Summary"]])
-        sections.append(f"## Summary\n{summary_text}")
+        if "Summary" in baselines:
+            summary_text = " ".join([normalize_text(s) for s in baselines["Summary"]])
+            sections.append(f"## Summary\n{summary_text}")
 
-    work_lines = ["## Work Experience"]
-    roles_processed = {}
+        work_lines = ["## Work Experience"]
 
-    for role, baseline_bullets in baselines.items():
-        if role in ["Contact", "Summary", "Education", "Skills"]:
-            continue
+        for role, baseline_bullets in baselines.items():
+            if role in ["Contact", "Summary", "Education", "Skills"]:
+                continue
 
-        ai_bullets = generate_ai_bullets(role, job_title, company, baseline_bullets)
-        bullets, mode = enforce_bullet_count(ai_bullets, baseline_bullets)
+            ai_bullets = generate_ai_bullets(role, job_title, company, baseline_bullets)
+            bullets, mode = enforce_bullet_count(ai_bullets, baseline_bullets)
 
-        work_lines.append(f"### {role}")
-        for b in bullets:
-            work_lines.append(f"- {b}")
+            work_lines.append(f"### {role}")
+            for b in bullets:
+                work_lines.append(f"- {b}")
 
-        print(f"[DEBUG] Role: {role} -> {mode} ({len(bullets)} bullets)")
-        roles_processed[role] = {"mode": mode, "bullet_count": len(bullets)}
+            print(f"[DEBUG] Role: {role} -> {mode} ({len(bullets)} bullets)")
+            roles_processed[role] = {"mode": mode, "bullet_count": len(bullets)}
 
-    sections.append("\n".join(work_lines))
+        sections.append("\n".join(work_lines))
 
-    if "Education" in baselines:
-        edu_lines = ["## Education"] + [f"- {normalize_text(e)}" for e in baselines["Education"]]
-        sections.append("\n".join(edu_lines))
+        if "Education" in baselines:
+            edu_lines = ["## Education"] + [f"- {normalize_text(e)}" for e in baselines["Education"]]
+            sections.append("\n".join(edu_lines))
 
-    if "Skills" in baselines:
-        skill_lines = ["## Skills"] + [f"- {normalize_text(s)}" for s in baselines["Skills"]]
-        sections.append("\n".join(skill_lines))
+        if "Skills" in baselines:
+            skill_lines = ["## Skills"] + [f"- {normalize_text(s)}" for s in baselines["Skills"]]
+            sections.append("\n".join(skill_lines))
 
+        result = {
+            "company": company,
+            "job_title": job_title,
+            "closing_date": jd_meta["closing_date"],
+            "jd_url": jd_meta["jd_url"],
+            "roles_processed": roles_processed,
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Failed during resume build: {e}")
+        # ✅ still create a minimal result.json so downstream steps don't break
+        result = {
+            "company": company,
+            "job_title": job_title,
+            "closing_date": jd_meta.get("closing_date", "TBD"),
+            "jd_url": jd_meta.get("jd_url", ""),
+            "roles_processed": roles_processed,
+            "error": str(e),
+        }
+
+    # ✅ Always write resume + result.json
     with open(resume_path, "w", encoding="utf-8") as f:
         f.write("\n\n".join(sections))
 
-    result = {
-        "company": company,
-        "job_title": job_title,
-        "closing_date": jd_meta["closing_date"],
-        "jd_url": jd_meta["jd_url"],
-        "roles_processed": roles_processed,
-    }
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
 
