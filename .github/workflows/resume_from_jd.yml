@@ -30,15 +30,31 @@ jobs:
         run: |
           echo "[DEBUG] Scanning for jd.md files..."
           found=0
-          for jd in $(find runs -type f -path "*/inputs/jd.md"); do
+          latest_jd=""
+          latest_key=""
+          
+          # Find the most recent JD file by folder name + path (handles same-date folders)
+          for jd in $(find runs -type f -path "*/inputs/jd.md" | sort); do
             found=1
-            echo "[DEBUG] Processing JD: $jd"
-            python scripts/generate_resume_from_jd.py "$jd"
+            folder_path=$(dirname $(dirname "$jd"))
+            folder_name=$(basename "$folder_path")
+            # Use full folder path as sort key to handle same dates
+            sort_key="${folder_name}_${folder_path}"
+            echo "[DEBUG] Found JD: $jd (key: $sort_key)"
+            
+            if [[ "$sort_key" > "$latest_key" ]]; then
+              latest_key="$sort_key"
+              latest_jd="$jd"
+            fi
           done
+          
           if [ $found -eq 0 ]; then
             echo "[WARN] No jd.md files found under runs/**/inputs/"
             exit 0
           fi
+          
+          echo "[DEBUG] Processing most recent JD: $latest_jd (key: $latest_key)"
+          python scripts/generate_resume_from_jd.py "$latest_jd"
 
       - name: Debug outputs directory
         run: |
@@ -65,10 +81,5 @@ jobs:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: |
-          if [ -f .last_result ]; then
-            target=$(cat .last_result)
-            echo "[DEBUG] Updating sheet with $target"
-            python scripts/update_sheet.py "$target"
-          else
-            echo "[WARN] No .last_result marker found, skipping sheet update"
-          fi
+          echo "[DEBUG] Finding and updating with latest result.json"
+          python scripts/update_sheet.py
