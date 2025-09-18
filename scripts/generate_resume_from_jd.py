@@ -35,6 +35,31 @@ def sanitize_text(text: str) -> str:
     # Normalize whitespace
     return " ".join(text.split())
 
+def parse_jd_header(jd_path: Path):
+    """Parse structured header from jd.md file."""
+    try:
+        with open(jd_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Extract header section (before the --- delimiter)
+        header_section = content.split("---")[0].strip()
+        
+        # Parse key-value pairs
+        data = {}
+        for line in header_section.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                key = key.strip().lower().replace(" ", "_")
+                value = value.strip()
+                if value:  # Only add non-empty values
+                    data[key] = sanitize_text(value)
+        
+        print(f"[DEBUG] Parsed JD header: {data}")
+        return data
+    except Exception as e:
+        print(f"[WARN] Failed to parse JD header: {e}")
+        return {}
+
 def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: str):
     """Generate tailored bullets with OpenAI, fallback to baseline if needed."""
     try:
@@ -62,10 +87,20 @@ def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: 
 
 def build_resume(jd_path: Path, baselines: dict):
     """Generate resume markdown and result.json metadata."""
+    # Parse header data first
+    jd_data = parse_jd_header(jd_path)
+    
+    # Use parsed data, fallback to folder name if needed
     folder_name = jd_path.parent.parent.name
-    parts = folder_name.split("_", 1)
-    company = parts[-1] if len(parts) > 1 else folder_name
-    job_title = company.replace("_", " ")
+    folder_parts = folder_name.split("_", 1)
+    fallback_company = folder_parts[-1] if len(folder_parts) > 1 else folder_name
+    
+    company = jd_data.get("company", fallback_company)
+    job_title = jd_data.get("job_title", company.replace("_", " "))
+    jd_url = jd_data.get("url", "")
+    closing_date = jd_data.get("closing_date", "")
+    
+    print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
 
     api_key = os.environ.get("OPENAI_API_KEY")
     roles_data = {}
@@ -128,28 +163,34 @@ def build_resume(jd_path: Path, baselines: dict):
     # Write outputs with explicit encoding
     out_dir = jd_path.parent.parent / "outputs"
     out_dir.mkdir(parents=True, exist_ok=True)
-    md_file = out_dir / f"Gamal_Mensah_Resume_{company}.md"
+    md_file = out_dir / f"Gamal_Mensah_Resume_{company.replace(' ', '_')}.md"
     
     # Ensure ASCII-safe output for GitHub Actions
     resume_content = "\n".join(resume_md)
+    resume_content = sanitize_text(resume_content)  # Global sanitization pass
     with open(md_file, "w", encoding="utf-8", newline="\n") as f:
         f.write(resume_content)
     print(f"[DEBUG] Wrote resume: {md_file}")
 
-    # Metadata for Sheets (EXACT 7 fields, nothing else)
+    # Metadata for Sheets (EXACT 7 fields with parsed data)
     result = {
         "date": datetime.date.today().isoformat(),
-        "company": company,
-        "job_title": job_title,
+        "company": sanitize_text(company),
+        "job_title": sanitize_text(job_title),
         "jd_path": str(jd_path),
-        "closing_date": "TBD Closing Date",
-        "jd_url": "",
+        "closing_date": sanitize_text(closing_date) if closing_date else "TBD Closing Date",
+        "jd_url": sanitize_text(jd_url),
         "ats_score": "fallback"
     }
+    
+    # Sanitize all JSON values
+    result = {k: sanitize_text(str(v)) if isinstance(v, str) else v for k, v in result.items()}
+    
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(result, f, indent=2, ensure_ascii=True)  # Force ASCII output
     print(f"[DEBUG] Wrote metadata: {result_path}")
+    print(f"[DEBUG] Result JSON content: {result}")
 
     # Marker for workflow
     marker_path = Path(".last_result")
