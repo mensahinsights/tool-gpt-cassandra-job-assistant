@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need at least 2 commits to compare
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -28,33 +30,34 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "[DEBUG] Scanning for jd.md files..."
-          found=0
-          latest_jd=""
-          latest_key=""
+          echo "[DEBUG] Finding changed jd.md files in this push..."
           
-          # Find the most recent JD file by folder name + path (handles same-date folders)
-          for jd in $(find runs -type f -path "*/inputs/jd.md" | sort); do
-            found=1
-            folder_path=$(dirname $(dirname "$jd"))
-            folder_name=$(basename "$folder_path")
-            # Use full folder path as sort key to handle same dates
-            sort_key="${folder_name}_${folder_path}"
-            echo "[DEBUG] Found JD: $jd (key: $sort_key)"
-            
-            if [[ "$sort_key" > "$latest_key" ]]; then
-              latest_key="$sort_key"
-              latest_jd="$jd"
+          # Get the list of changed jd.md files from git
+          changed_jds=$(git diff --name-only HEAD~1 HEAD | grep 'runs/.*/inputs/jd\.md$' || true)
+          
+          if [ -z "$changed_jds" ]; then
+            echo "[WARN] No jd.md files changed in this push"
+            # For workflow_dispatch, process all files as fallback
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "[DEBUG] Manual trigger - processing all jd.md files"
+              changed_jds=$(find runs -type f -path "*/inputs/jd.md" | head -1)
+            else
+              exit 0
             fi
-          done
-          
-          if [ $found -eq 0 ]; then
-            echo "[WARN] No jd.md files found under runs/**/inputs/"
-            exit 0
           fi
           
-          echo "[DEBUG] Processing most recent JD: $latest_jd (key: $latest_key)"
-          python scripts/generate_resume_from_jd.py "$latest_jd"
+          echo "[DEBUG] Changed JD files:"
+          echo "$changed_jds"
+          
+          # Process each changed JD
+          for jd in $changed_jds; do
+            if [ -f "$jd" ]; then
+              echo "[DEBUG] Processing changed JD: $jd"
+              python scripts/generate_resume_from_jd.py "$jd"
+            else
+              echo "[WARN] File not found: $jd"
+            fi
+          done
 
       - name: Debug outputs directory
         run: |
