@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Resume generator script using OpenAI REST API (gpt-4o-mini) for dynamic bullet generation.
-This version avoids the Python SDK entirely to prevent 'proxies' errors.
+Resume generator using OpenAI REST API (gpt-4o-mini).
+Guaranteed to always write an output resume file, even if JD metadata is missing.
 """
 
 import os
@@ -19,21 +19,18 @@ OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 
 def load_baselines():
+    if not Path(BASELINES_PATH).exists():
+        raise FileNotFoundError(f"Missing {BASELINES_PATH}. Cannot build resume.")
     with open(BASELINES_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def sanitize_text(text: str) -> str:
-    """Replace forbidden characters and normalize text."""
-    char_map = {
-        8212: "-", 8211: "-", 8220: '"', 8221: '"',
-        8217: "'", 8216: "'", 8226: "*"
-    }
+    char_map = {8212: "-", 8211: "-", 8220: '"', 8221: '"', 8217: "'", 8216: "'", 8226: "*"}
     for code, replacement in char_map.items():
         text = text.replace(chr(code), replacement)
     text = re.sub(r"[^\x00-\x7F]", "", text)
-    text = re.sub(r"[ \t]+", " ", text).strip()
-    return text
+    return re.sub(r"[ \t]+", " ", text).strip()
 
 
 def parse_jd_header(jd_path: Path):
@@ -50,10 +47,7 @@ def parse_jd_header(jd_path: Path):
         for line in header_section.split("\n"):
             if ":" in line:
                 key, value = line.split(":", 1)
-                key = key.strip().lower().replace(" ", "_")
-                value = value.strip()
-                if value:
-                    data[key] = sanitize_text(value)
+                data[key.strip().lower().replace(" ", "_")] = sanitize_text(value.strip())
         return data
     except Exception as e:
         print(f"[WARN] Failed to parse JD header: {e}")
@@ -72,45 +66,27 @@ def generate_tailored_bullets(role: str, job_title: str, company: str):
         "and highlight measurable impact where possible. Return only the bullets."
     )
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 400,
-    }
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}], "max_tokens": 400}
 
     resp = requests.post(OPENAI_API_URL, headers=headers, json=payload, timeout=60)
     if resp.status_code != 200:
-        raise RuntimeError(
-            f"OpenAI API call failed ({resp.status_code}): {resp.text}"
-        )
+        raise RuntimeError(f"OpenAI API call failed ({resp.status_code}): {resp.text}")
 
     content = resp.json()["choices"][0]["message"]["content"]
-    bullets = [
-        sanitize_text(line.strip("*- ").strip())
-        for line in content.splitlines()
-        if line.strip()
-    ]
-    return bullets[:6] if bullets else None
+    bullets = [sanitize_text(line.strip("*- ").strip()) for line in content.splitlines() if line.strip()]
+    return bullets[:6] if bullets else []
 
 
 def build_resume(jd_path: Path, baselines: dict):
-    jd_data = parse_jd_header(jd_path)
-    folder_name = jd_path.parent.parent.name
-    folder_parts = folder_name.split("_", 1)
-    fallback_company = folder_parts[-1] if len(folder_parts) > 1 else folder_name
-    company = jd_data.get("company", fallback_company)
+    jd_data = parse_jd_header(jd_path) if jd_path.exists() else {}
+    folder_name = jd_path.parent.parent.name if jd_path.exists() else "unknown"
+    company = jd_data.get("company", folder_name)
     job_title = jd_data.get("job_title", company.replace("_", " "))
     jd_url = jd_data.get("url", "")
     closing_date = jd_data.get("closing_date", "")
 
-    roles_data = {}
     resume_md = []
-
-    # Contact block
     contact = baselines.get("contact", {})
     name = contact.get("name", "Gamal Mensah")
     location = contact.get("location", "Toronto, ON")
@@ -118,6 +94,8 @@ def build_resume(jd_path: Path, baselines: dict):
     phone = contact.get("phone", "Phone: Provided on request")
     linkedin = contact.get("linkedin", "")
     portfolio = contact.get("portfolio", "")
+
+    # Contact block
     resume_md.append(f"# {name}")
     resume_md.append(f"{location} | {email} | {phone}")
     if linkedin and portfolio:
@@ -143,20 +121,19 @@ def build_resume(jd_path: Path, baselines: dict):
         title = details.get("title", role)
         employer = details.get("employer", "")
         dates = details.get("dates", "")
-        location = details.get("location", "")
+        loc = details.get("location", "")
         resume_md.append(f"### {title} | {employer}")
-        resume_md.append(f"{dates} | {location}")
+        resume_md.append(f"{dates} | {loc}")
 
-        bullets = generate_tailored_bullets(role, job_title, company)
-        if not bullets:
+        try:
+            bullets = generate_tailored_bullets(role, job_title, company)
+        except Exception as e:
+            print(f"[WARN] Bullet gen failed for {role}: {e}")
             bullets = details.get("bullets", [])
 
-        bullets = [sanitize_text(b) for b in bullets][:6]
-        for b in bullets:
-            resume_md.append(f"- {b}")
+        for b in bullets[:6]:
+            resume_md.append(f"- {sanitize_text(b)}")
         resume_md.append("")
-
-        roles_data[role] = bullets
 
     # Education
     resume_md.append("## Education")
@@ -170,8 +147,8 @@ def build_resume(jd_path: Path, baselines: dict):
         resume_md.append(f"- {sanitize_text(skill)}")
     resume_md.append("")
 
-    # Write outputs
-    out_dir = jd_path.parent.parent / "outputs"
+    # Outputs
+    out_dir = jd_path.parent.parent / "outputs" if jd_path.exists() else Path("runs/outputs")
     out_dir.mkdir(parents=True, exist_ok=True)
     md_file = out_dir / f"Gamal_Mensah_Resume_{company.replace(' ', '_')}.md"
     with open(md_file, "w", encoding="utf-8", newline="\n") as f:
@@ -182,7 +159,7 @@ def build_resume(jd_path: Path, baselines: dict):
         "date": datetime.date.today().isoformat(),
         "company": sanitize_text(company),
         "job_title": sanitize_text(job_title),
-        "jd_path": str(jd_path),
+        "jd_path": str(jd_path) if jd_path.exists() else "N/A",
         "closing_date": sanitize_text(closing_date) if closing_date else "TBD Closing Date",
         "jd_url": sanitize_text(jd_url),
         "ats_score": "fallback",
@@ -190,6 +167,7 @@ def build_resume(jd_path: Path, baselines: dict):
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(result, f, indent=2, ensure_ascii=True)
+    print(f"[DEBUG] Wrote metadata: {result_path}")
 
 
 def main(jd_path: str):
