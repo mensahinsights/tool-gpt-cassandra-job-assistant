@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
+"""
+Resume generator script that builds a tailored resume from a baseline and job description.
+Dynamic bullets are generated using OpenAI gpt-4o-mini.
+"""
+
 import os
 import sys
 import json
 import datetime
 import re
 from pathlib import Path
-import openai  # use the modern SDK
+import openai  # Official OpenAI Python SDK v1.43.0
+
 
 BASELINES_PATH = "baselines.json"
+
 
 def load_baselines():
     with open(BASELINES_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def sanitize_text(text: str) -> str:
-    """Replace forbidden characters in plain text while preserving Markdown syntax."""
+    """Replace forbidden characters and normalize text."""
     char_map = {
         8212: "-",    # em dash → hyphen
         8211: "-",    # en dash → hyphen
@@ -29,6 +37,7 @@ def sanitize_text(text: str) -> str:
     text = re.sub(r'[^\x00-\x7F]', '', text)   # strip non-ASCII
     text = re.sub(r'[ \t]+', ' ', text).strip()
     return text
+
 
 def parse_jd_header(jd_path: Path):
     """Parse structured header from jd.md file."""
@@ -54,8 +63,12 @@ def parse_jd_header(jd_path: Path):
         print(f"[WARN] Failed to parse JD header: {e}")
         return {}
 
+
 def generate_tailored_bullets(role: str, job_title: str, company: str):
-    """Generate tailored bullets with OpenAI, fallback to baseline if needed."""
+    """
+    Generate tailored bullets with OpenAI gpt-4o-mini.
+    This is the critical function: no OpenAI() constructor, no proxies.
+    """
     try:
         prompt = (
             f"Generate 4-6 strong resume bullet points for the role '{role}' "
@@ -78,6 +91,7 @@ def generate_tailored_bullets(role: str, job_title: str, company: str):
         print(f"[WARN] OpenAI bullet gen failed for {role}: {e}")
         return None
 
+
 def build_resume(jd_path: Path, baselines: dict):
     jd_data = parse_jd_header(jd_path)
     folder_name = jd_path.parent.parent.name
@@ -91,8 +105,6 @@ def build_resume(jd_path: Path, baselines: dict):
     print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
     api_key_present = bool(os.environ.get("OPENAI_API_KEY", "").strip())
     print(f"[DEBUG] OpenAI API key present: {api_key_present}")
-    if api_key_present:
-        print(f"[DEBUG] OpenAI API key length: {len(os.environ.get('OPENAI_API_KEY'))}")
 
     roles_data = {}
     resume_md = []
@@ -126,7 +138,6 @@ def build_resume(jd_path: Path, baselines: dict):
     # Experience
     resume_md.append("## Professional Experience")
     experience_data = baselines.get("experience", {})
-    print(f"[DEBUG] Found {len(experience_data)} experience roles: {list(experience_data.keys())}")
     for role, details in experience_data.items():
         print(f"[DEBUG] Processing role: {role}")
         title = details.get("title", role)
@@ -209,9 +220,11 @@ def build_resume(jd_path: Path, baselines: dict):
         marker.write(f"{abs_result_path}|{timestamp}")
     print(f"[DEBUG] Wrote marker file: {marker_path} -> {abs_result_path} at {timestamp}")
 
+
 def main(jd_path: str):
     baselines = load_baselines()
     build_resume(Path(jd_path), baselines)
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
