@@ -1,0 +1,35 @@
+name: Debug Resume Generation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Debug OpenAI environment
+        run: |
+          echo "🔍 Checking OpenAI package..."
+          python -c "import openai; print('OpenAI version:', openai.__version__); print('OpenAI loaded from:', openai.__file__)"
+          echo "🔍 Searching repo for 'OpenAI(' constructor usage..."
+          grep -R "OpenAI(" . || echo "✅ No constructor found in repo"
+
+      - name: Run resume generation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🔍 Running generate_resume_from_jd.py..."
+          python scripts/generate_resume_from_jd.py runs/sample/jd.md || true
