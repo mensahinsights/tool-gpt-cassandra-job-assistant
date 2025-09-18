@@ -4,7 +4,7 @@ import json
 import datetime
 import re
 from pathlib import Path
-import openai  # new SDK style
+import openai  # new SDK style, no OpenAI() client object
 
 BASELINES_PATH = "baselines.json"
 
