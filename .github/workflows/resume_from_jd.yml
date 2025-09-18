@@ -1,4 +1,4 @@
-name: Resume Generator (Claude)
+name: Resume Generator (OpenAI REST)
 
 on:
   workflow_dispatch:
@@ -19,21 +19,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies (force clean Anthropic)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # force reinstall Anthropic cleanly to avoid proxies bug
-          pip install anthropic==0.39.0 --force-reinstall --no-cache-dir
-          # then install the rest of your project dependencies
-          pip install -r requirements.txt
+          pip install requests pyyaml google-api-python-client google-auth google-auth-httplib2
 
-      - name: Verify Anthropic version
+      - name: Verify requests version
         run: |
-          python -c "import anthropic; print('Anthropic version:', anthropic.__version__); print('Loaded from:', anthropic.__file__)"
+          python -c "import requests; print('Requests version:', requests.__version__); print('Loaded from:', requests.__file__)"
 
       - name: Run resume generation
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "🔍 Running resume generator with Claude..."
+          echo "🔍 Running resume generator with OpenAI REST API..."
           python scripts/generate_resume_from_jd.py runs/sample/jd.md

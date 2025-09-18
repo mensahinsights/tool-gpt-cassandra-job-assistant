@@ -1,8 +1,10 @@
-openai==1.43.0
+# Core HTTP client
+requests==2.32.3
+
+# YAML parsing
 pyyaml==6.0.2
+
+# Google Sheets / Drive integration
 google-api-python-client==2.149.0
 google-auth==2.35.0
 google-auth-httplib2==0.2.0
-anthropic==0.39.0
-
-

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Resume generator script using Anthropic Claude 3.5 Sonnet for dynamic bullet generation.
+Resume generator script using OpenAI REST API (gpt-4o-mini) for dynamic bullet generation.
+This version avoids the Python SDK entirely to prevent 'proxies' errors.
 """
 
 import os
@@ -9,11 +10,12 @@ import json
 import datetime
 import re
 from pathlib import Path
-from anthropic import Anthropic  # pip install anthropic==0.39.0
+import requests
 
 
 BASELINES_PATH = "baselines.json"
-anthropic_client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 
 def load_baselines():
@@ -29,8 +31,8 @@ def sanitize_text(text: str) -> str:
     }
     for code, replacement in char_map.items():
         text = text.replace(chr(code), replacement)
-    text = re.sub(r'[^\x00-\x7F]', '', text)
-    text = re.sub(r'[ \t]+', ' ', text).strip()
+    text = re.sub(r"[^\x00-\x7F]", "", text)
+    text = re.sub(r"[ \t]+", " ", text).strip()
     return text
 
 
@@ -59,29 +61,40 @@ def parse_jd_header(jd_path: Path):
 
 
 def generate_tailored_bullets(role: str, job_title: str, company: str):
-    """Generate tailored resume bullets using Claude 3.5 Sonnet."""
-    try:
-        prompt = (
-            f"Generate 4-6 strong resume bullet points for the role '{role}' "
-            f"that align with the job title '{job_title}' at {company}. "
-            "Each bullet must begin with a strong action verb, be specific, "
-            "and highlight measurable impact where possible. Return only the bullets."
+    """Generate tailored resume bullets using OpenAI REST API."""
+    if not OPENAI_API_KEY:
+        raise RuntimeError("Missing OPENAI_API_KEY environment variable.")
+
+    prompt = (
+        f"Generate 4-6 strong resume bullet points for the role '{role}' "
+        f"that align with the job title '{job_title}' at {company}. "
+        "Each bullet must begin with a strong action verb, be specific, "
+        "and highlight measurable impact where possible. Return only the bullets."
+    )
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 400,
+    }
+
+    resp = requests.post(OPENAI_API_URL, headers=headers, json=payload, timeout=60)
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"OpenAI API call failed ({resp.status_code}): {resp.text}"
         )
-        resp = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20240620",
-            max_tokens=400,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        content = resp.content[0].text
-        bullets = [
-            sanitize_text(line.strip("*- ").strip())
-            for line in content.splitlines()
-            if line.strip()
-        ]
-        return bullets[:6] if bullets else None
-    except Exception as e:
-        print(f"[WARN] Claude bullet gen failed for {role}: {e}")
-        return None
+
+    content = resp.json()["choices"][0]["message"]["content"]
+    bullets = [
+        sanitize_text(line.strip("*- ").strip())
+        for line in content.splitlines()
+        if line.strip()
+    ]
+    return bullets[:6] if bullets else None
 
 
 def build_resume(jd_path: Path, baselines: dict):
@@ -172,7 +185,7 @@ def build_resume(jd_path: Path, baselines: dict):
         "jd_path": str(jd_path),
         "closing_date": sanitize_text(closing_date) if closing_date else "TBD Closing Date",
         "jd_url": sanitize_text(jd_url),
-        "ats_score": "fallback"
+        "ats_score": "fallback",
     }
     result_path = out_dir / "result.json"
     with open(result_path, "w", encoding="utf-8", newline="\n") as f:
