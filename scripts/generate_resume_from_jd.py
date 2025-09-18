@@ -132,15 +132,33 @@ def build_resume(jd_path: Path, baselines: dict):
         resume_md.append(f"### {title} | {employer}")
         resume_md.append(f"{dates} | {location}")
 
+        # Generate bullets with better error handling
         bullets = []
+        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        
         if api_key:
+            print(f"[DEBUG] Attempting OpenAI bullet generation for {role}")
             bullets = generate_tailored_bullets(role, job_title, company, api_key)
+            if bullets:
+                print(f"[DEBUG] Generated {len(bullets)} OpenAI bullets for {role}")
+            else:
+                print(f"[WARN] OpenAI bullet generation failed for {role}, using fallback")
+        else:
+            print(f"[DEBUG] No OpenAI API key found, using baseline bullets for {role}")
+        
+        # Fallback to baseline if OpenAI failed or no API key
         if not bullets:
             bullets = details.get("bullets", [])
+            print(f"[DEBUG] Using {len(bullets)} baseline bullets for {role}")
+        
+        # Ensure we have at least 4 bullets
         bullets = [sanitize_text(b) for b in bullets]
         if len(bullets) < 4:
-            bullets += details.get("bullets", [])
-        bullets = bullets[:6]
+            baseline_bullets = details.get("bullets", [])
+            bullets.extend(baseline_bullets)
+            print(f"[DEBUG] Extended to {len(bullets)} total bullets for {role}")
+        
+        bullets = bullets[:6]  # Cap at 6
 
         for b in bullets:
             resume_md.append(f"- {b}")
