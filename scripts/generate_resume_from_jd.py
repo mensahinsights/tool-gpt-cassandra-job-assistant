@@ -192,11 +192,14 @@ def build_resume(jd_path: Path, baselines: dict):
     print(f"[DEBUG] Wrote metadata: {result_path}")
     print(f"[DEBUG] Result JSON content: {result}")
 
-    # Marker for workflow
+    # Marker for workflow - always use absolute path and timestamp
     marker_path = Path(".last_result")
+    abs_result_path = result_path.absolute()
+    timestamp = datetime.datetime.now().isoformat()
+    
     with open(marker_path, "w", encoding="utf-8", newline="\n") as marker:
-        marker.write(str(result_path))
-    print(f"[DEBUG] Wrote marker file: {marker_path} -> {result_path}")
+        marker.write(f"{abs_result_path}|{timestamp}")
+    print(f"[DEBUG] Wrote marker file: {marker_path} -> {abs_result_path} at {timestamp}")
 
 def main(jd_path: str):
     baselines = load_baselines()

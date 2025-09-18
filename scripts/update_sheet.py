@@ -1,9 +1,28 @@
 import os
 import json
+from pathlib import Path
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-def update_sheet(result_json_path: str):
+def find_latest_result_json():
+    """Find the most recently created result.json file."""
+    runs_dir = Path("runs")
+    if not runs_dir.exists():
+        print("[ERROR] No runs directory found")
+        return None
+    
+    # Find all result.json files
+    result_files = list(runs_dir.glob("*/outputs/result.json"))
+    if not result_files:
+        print("[ERROR] No result.json files found")
+        return None
+    
+    # Sort by modification time, newest first
+    latest_file = max(result_files, key=lambda f: f.stat().st_mtime)
+    print(f"[DEBUG] Found latest result.json: {latest_file}")
+    return latest_file
+
+def update_sheet(result_json_path: str = None):
     """Append exactly 1 row into the Google Sheet, matching header order."""
     creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     sheet_id = os.environ.get("SHEET_ID")
@@ -11,6 +30,20 @@ def update_sheet(result_json_path: str):
     if not creds_json or not sheet_id:
         print("[WARN] Missing Google Sheets credentials or SHEET_ID. Skipping sheet update.")
         return
+
+    # If no path provided, find the latest one
+    if not result_json_path:
+        latest_file = find_latest_result_json()
+        if not latest_file:
+            return
+        result_json_path = str(latest_file)
+    elif not Path(result_json_path).exists():
+        print(f"[ERROR] File not found: {result_json_path}")
+        latest_file = find_latest_result_json()
+        if not latest_file:
+            return
+        result_json_path = str(latest_file)
+        print(f"[DEBUG] Using latest file instead: {result_json_path}")
 
     try:
         creds_dict = json.loads(creds_json)
@@ -23,6 +56,8 @@ def update_sheet(result_json_path: str):
         with open(result_json_path, "r", encoding="utf-8") as f:
             result = json.load(f)
 
+        print(f"[DEBUG] Loaded result data: {result}")
+
         # Strict 7-column row, always in the right order
         row = [
             result.get("date", ""),          # Date
@@ -34,7 +69,12 @@ def update_sheet(result_json_path: str):
             result.get("ats_score", ""),     # ATS Score
         ]
 
-        print(f"[DEBUG] Prepared row: {row}")
+        print(f"[DEBUG] Prepared row (length={len(row)}): {row}")
+
+        # Verify row has exactly 7 columns
+        if len(row) != 7:
+            print(f"[ERROR] Row has {len(row)} columns, expected 7")
+            return
 
         body = {"values": [row]}
         service.spreadsheets().values().append(
@@ -45,14 +85,17 @@ def update_sheet(result_json_path: str):
             body=body
         ).execute()
 
-        print(f"[DEBUG] Updated Google Sheet with row: {row}")
+        print(f"[SUCCESS] Updated Google Sheet with row: {row}")
 
     except Exception as e:
         print(f"[ERROR] Failed to update Google Sheet: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python update_sheet.py <result.json>")
+        print("Using latest result.json file...")
+        update_sheet()
     else:
         update_sheet(sys.argv[1])
