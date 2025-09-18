@@ -66,10 +66,10 @@ def parse_jd_header(jd_path: Path):
         print(f"[WARN] Failed to parse JD header: {e}")
         return {}
 
-def generate_tailored_bullets(role: str, job_title: str, company: str, api_key: str):
+def generate_tailored_bullets(role: str, job_title: str, company: str):
     """Generate tailored bullets with OpenAI, fallback to baseline if needed."""
     try:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI()  # fixed: rely on env var OPENAI_API_KEY
         prompt = (
             f"Generate 4-6 strong resume bullet points for the role '{role}' "
             f"that align with the job title '{job_title}' at {company}. "
@@ -108,10 +108,11 @@ def build_resume(jd_path: Path, baselines: dict):
     
     print(f"[DEBUG] Using: Company='{company}', Job Title='{job_title}', URL='{jd_url}'")
 
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    print(f"[DEBUG] OpenAI API key present: {bool(api_key)}")
-    print(f"[DEBUG] OpenAI API key length: {len(api_key) if api_key else 0}")
-    
+    api_key_present = bool(os.environ.get("OPENAI_API_KEY", "").strip())
+    print(f"[DEBUG] OpenAI API key present: {api_key_present}")
+    if api_key_present:
+        print(f"[DEBUG] OpenAI API key length: {len(os.environ.get('OPENAI_API_KEY'))}")
+
     roles_data = {}
     resume_md = []
 
@@ -159,9 +160,9 @@ def build_resume(jd_path: Path, baselines: dict):
         # Generate bullets with better error handling
         bullets = []
         
-        if api_key:
+        if api_key_present:
             print(f"[DEBUG] Attempting OpenAI bullet generation for {role}")
-            bullets = generate_tailored_bullets(role, job_title, company, api_key)
+            bullets = generate_tailored_bullets(role, job_title, company)
             if bullets:
                 print(f"[DEBUG] Generated {len(bullets)} OpenAI bullets for {role}")
             else:
