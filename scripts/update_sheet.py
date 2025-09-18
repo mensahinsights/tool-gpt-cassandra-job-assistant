@@ -23,19 +23,23 @@ def update_sheet(result_json_path: str):
         with open(result_json_path, "r", encoding="utf-8") as f:
             result = json.load(f)
 
+        # Map values to match your sheet columns
         row = [
-            datetime.date.today().isoformat(),
-            result.get("company", "Unknown"),
-            result.get("job_title", "Unknown"),
-            result.get("closing_date", "TBD"),
-            result.get("jd_url", ""),
-            json.dumps(result.get("roles_processed", {}))
+            datetime.date.today().isoformat(),             # Date
+            result.get("company", "Unknown Company"),      # Company
+            result.get("job_title", "Unknown Role"),       # Job Title
+            result.get("jd_path", ""),                     # JD Path
+            result.get("closing_date", "TBD Closing Date"),# Closing Date
+            result.get("jd_url", ""),                      # JD URL
+            result.get("ats_score", "fallback")            # ATS Score (if available)
         ]
+
+        print(f"[DEBUG] Prepared row: {row}")
 
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:F",  # 👈 must match tab name
+            range="Sheet1!A:G",  # matches 7 columns
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
