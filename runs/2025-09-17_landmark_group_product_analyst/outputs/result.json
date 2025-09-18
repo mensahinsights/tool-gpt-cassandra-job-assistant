@@ -2,7 +2,8 @@
   "company": "landmark_group_product_analyst",
   "job_title": "landmark group product analyst",
   "jd_path": "runs/2025-09-17_landmark_group_product_analyst/inputs/jd.md",
-  "closing_date": "TBD",
+  "closing_date": "TBD Closing Date",
   "jd_url": "",
+  "ats_score": "fallback",
   "roles_processed": {}
 }

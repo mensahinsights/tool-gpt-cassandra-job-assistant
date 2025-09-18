@@ -2,7 +2,8 @@
   "company": "which_is_it",
   "job_title": "which is it",
   "jd_path": "runs/2025-09-17_which_is_it/inputs/jd.md",
-  "closing_date": "TBD",
+  "closing_date": "TBD Closing Date",
   "jd_url": "",
+  "ats_score": "fallback",
   "roles_processed": {}
 }
