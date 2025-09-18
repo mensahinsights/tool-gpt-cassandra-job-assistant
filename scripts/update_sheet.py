@@ -35,7 +35,7 @@ def update_sheet(result_json_path: str):
         body = {"values": [row]}
         service.spreadsheets().values().append(
             spreadsheetId=sheet_id,
-            range="job_tracker!A:F",  # 👈 must match tab name
+            range="Sheet1!A:F",  # 👈 must match tab name
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body=body
